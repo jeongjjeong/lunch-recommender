@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오늘 뭐 먹지? 식권 맛집 추천!</title>
+    <style>
+        /* CSS 코드는 그대로 유지합니다 */
+        body {
+            font-family: 'Malgun Gothic', 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #fcf8e3;
+            color: #4a4a4a;
+            text-align: center;
+        }
+
+        h1 {
+            color: #8a6d3b;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .description {
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            color: #666;
+        }
+
+        .recommendation-area {
+            background-color: #fff;
+            border: 2px solid #d6e9c6;
+            border-radius: 10px;
+            padding: 30px 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .recommendation-text {
+            font-size: 1.2em;
+            color: #5cb85c;
+            margin-bottom: 10px;
+        }
+
+        .menu-display {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #337ab7;
+            min-height: 1.5em;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .menu-display.active {
+            transform: scale(1.1);
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.3em;
+            background-color: #00BFFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background-color: #ec971f;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+    </style>
+</head>
+<body>
+    <h1>오늘 뭐 먹지?</h1>
+    <p class="description">우리 회사 식권으로 먹을 수 있는 점심 메뉴를 추천해 드릴게요!</p>
+
+    <div class="recommendation-area">
+        <p class="recommendation-text">추천 메뉴는?</p>
+        <p id="recommendedMenu" class="menu-display">버튼을 눌러보세요!</p>
+    </div>
+
+    <button id="recommendBtn">메뉴 추천받기!</button>
+
+    <script>
+        // 여기에 JavaScript 코드가 들어갈 예정입니다
+
+        // 1. 식당 및 메뉴 리스트 정의
+        const restaurants = [
+            { name: "한일", menus: ["해물 순두부", "삼계탕", "닭볶음탕", "뼈해장국"] },
+            { name: "마포만두", menus: ["떡볶이", "순대", "오뎅", "만두", "라볶이", "김밥"] },
+            { name: "오한수우육면가", menus: ["우육면"] },
+            { name: "전주콩나물국밥", menus: ["콩나물국밥", "돌솥비빔밥", "제육볶음", "뚝배기불고기"] },
+            { name: "이화수전통육개장", menus: ["육개장"] },
+	    { name: "장원족발", menus: ["보쌈정식", "김치찌개"] },
+	    { name: "선미원", menus: ["김치찌개", "뚝배기불고기"] },
+        ];
+
+        // 2. HTML 요소 가져오기
+        const recommendBtn = document.getElementById('recommendBtn');
+        const recommendedMenuDisplay = document.getElementById('recommendedMenu');
+
+        // 3. 메뉴 추천 함수
+        function recommendMenu() {
+            // 전체 메뉴를 담을 배열 생성
+            let allPossibleMenus = [];
+
+            // 각 식당의 메뉴를 allPossibleMenus 배열에 추가
+            restaurants.forEach(restaurant => {
+                restaurant.menus.forEach(menu => {
+                    allPossibleMenus.push(`${restaurant.name} - ${menu}`); // "식당명 - 메뉴" 형식으로 저장
+                });
+            });
+
+            // allPossibleMenus 배열에서 랜덤으로 하나 선택
+            const randomIndex = Math.floor(Math.random() * allPossibleMenus.length);
+            const recommended = allPossibleMenus[randomIndex];
+
+            // 선택된 메뉴를 화면에 표시
+            recommendedMenuDisplay.textContent = recommended;
+
+            // 애니메이션 효과를 위해 'active' 클래스 토글
+            recommendedMenuDisplay.classList.remove('active'); // 일단 제거
+            void recommendedMenuDisplay.offsetWidth; // 리플로우를 강제로 발생시켜 애니메이션 재실행
+            recommendedMenuDisplay.classList.add('active'); // 다시 추가
+        }
+
+        // 4. 버튼 클릭 이벤트 연결
+        recommendBtn.addEventListener('click', recommendMenu);
+
+        // 페이지 로드 시 초기 메시지 설정 (선택 사항)
+        // recommendedMenuDisplay.textContent = "버튼을 눌러보세요!";
+
+    </script>
+</body>
+</html>
