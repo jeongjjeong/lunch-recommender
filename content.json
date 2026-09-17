@@ -1,0 +1,29 @@
+{
+  "scenes": [
+    {
+      "id": "S1",
+      "headline": ["GLOW", "TYPOGRAPHY"],
+      "captions": ["RADIANT", "SEQUENCE", "MOTION LAB"]
+    },
+    {
+      "id": "S2",
+      "headline": ["IGNITION"],
+      "captions": ["PULSE", "CENTERED", "BURN", "CORE", "SIGNAL"]
+    },
+    {
+      "id": "S3",
+      "headline": ["DIAGONAL", "DRIFT"],
+      "captions": ["SHARD", "ANGLE", "SPLIT", "EDGE"]
+    },
+    {
+      "id": "S4",
+      "headline": ["RISING"],
+      "captions": ["LOWER", "GROUND", "SPREAD", "LIFT", "FAN"]
+    },
+    {
+      "id": "S5",
+      "headline": [],
+      "captions": ["FINALE", "STARLIGHT", "AFTERGLOW"]
+    }
+  ]
+}

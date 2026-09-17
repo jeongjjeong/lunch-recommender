@@ -1,0 +1,9 @@
+assets/fonts/*
+!assets/fonts/.gitkeep
+assets/audio/*
+!assets/audio/.gitkeep
+assets/manifest.json
+cache/
+out/
+__pycache__/
+*.pyc

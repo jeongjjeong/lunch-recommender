@@ -1,0 +1,13 @@
+{
+  "_comment": "Per-scene audio tone-shaping envelope consumed by tools/make_bgm.py. Times are seconds within the scene's own local timeline (scene start = 0).",
+  "letters_lpf_hz": 800,
+  "ignite_lpf_hz": 11800,
+  "outfade_lpf_hz": 900,
+  "scenes": {
+    "S1": {"ignite_at": 1.2, "outfade_at": 4.2},
+    "S2": {"ignite_at": 1.55, "outfade_at": 4.2},
+    "S3": {"ignite_at": 1.2, "outfade_at": 4.2},
+    "S4": {"ignite_at": 1.2, "outfade_at": 4.2},
+    "S5": {"ignite_at": 1.2, "outfade_at": null}
+  }
+}
