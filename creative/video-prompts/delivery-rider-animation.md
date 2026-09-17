@@ -83,26 +83,60 @@ High rear overhead angle. Following the cyan route line, folded elevated road se
 ### [4–5s] Shot 5 — Carving Through the Curve
 Low side-tracking camera outside the curve. The rider enters a broad banked turn at high speed, keeping one skate slightly ahead of the other without crossing his feet, leaning his whole body naturally into the curve. Hips, knees, boots, and wheels all follow the same arc. The crossbody bag swings outward from centrifugal inertia, pulling the strap taut. Foreground barriers sweep past rapidly while distant buildings move slower for parallax. Skate silhouettes stay readable despite background motion blur.
 
-### [5–6s] Shot 6 — Diving Into the Alley
-Rear three-quarter tracking shot, camera dropping lower as the elevated roadway funnels down into a narrow delivery alley. Deep navy building walls close in on both sides; cream awnings and stacked crates flick past in the foreground, creating tight parallax layers. The rider narrows his stance and pulls his elbows in, skates tracking in a straight, tight line beneath him. A cyan logistics route glows faintly overhead, threading between the buildings and guiding his path. Speed reads through streaking wall textures rather than any change in posture height.
+### [5–6s] Shot 6 — Passing Beneath a Giant Package
+A building-sized package moves across the road ahead, with a narrow clearance between its bottom and the road surface. The rear tracking camera lowers with the rider. He deeply bends his knees and folds his torso forward while keeping both skates aligned and rolling, passing beneath the package at high speed — never jumping or placing his knees on the ground. Loose package flaps and lime tape ends react to the airflow and flutter after he passes. The massive package briefly darkens the frame like a moving tunnel ceiling.
 
-### [6–7s] Shot 7 — The Gigantic Package Approaches
-Rear low-angle shot. Ahead, an enormous delivery parcel — cream cardboard with black tape seams and a lime shipping label — glides slowly along its own cyan route line, suspended above the road and spanning the full width of the alley. The rider drops into a deep crouch, lowering his center of gravity, both skates still rolling forward in a stable parallel glide. The gap beneath the package narrows into frame as he commits to passing underneath it. Loose tape ends on the parcel's corner flutter gently in the airflow.
+### [6–7s] Shot 7 — Back Into the Open Sky
+Rear-side skate close-up near the tunnel exit. The right skate rolls into the light first, followed by the left, both toes continuing to point in the same forward direction. The camera quickly rises from wheel height to waist level, revealing the suddenly open city and large cobalt-blue sky. The rider slightly raises his torso while keeping his knees flexed. The jacket and delivery bag continue moving for a beat after the body straightens, clearly showing secondary inertia. The character's anatomy is never stretched — all motion comes from natural joint movement.
 
-### [7–8s] Shot 8 — Passing Beneath the Parcel
-Extreme low rear-following shot, camera pressed near the ground. The rider's cap and shoulders pass just beneath the shadowed underside of the giant package, the navy shadow briefly darkening the cream road surface. Both skates stay perfectly parallel and rolling, knees bent low, arms tucked tight to the body for clearance. As he emerges from beneath the parcel, sunlight returns across the road in a sharp graphic transition and his posture begins to rise back upright.
+### [7–8s] Shot 8 — Catching a Package Without Stopping
+Rear-right medium tracking shot. A small delivery package travels beside the rider in the same direction at a slightly slower speed. The rider closes the distance and slides his right hand underneath the package: the hand touches first, the elbow bends slightly to absorb the relative motion, and only after the speeds synchronize does he pull the box closer to his body. The package never teleports directly into his hand. The added weight lowers his right shoulder slightly and his left arm adjusts for balance. The skates maintain a short, stable parallel glide during the catch.
 
-### [8–9s] Shot 9 — Catching the Second Package
-Rear-right three-quarter tracking shot at shoulder height. A second, smaller box travels along a cyan route line converging with the rider's path. Without slowing, he extends his left arm and catches it against his side, the box compressing slightly into his forearm and the crossbody bag on impact before settling into a secure carry. Both skates remain in continuous rolling motion throughout the catch — the support leg glide never breaks. The rider's torso absorbs the momentum with a brief forward lean.
+### [8–9s] Shot 9 — Catching the Moving Delivery Window
+Wide side-tracking shot running parallel to a building facade. Ahead, a giant lime-green location-pin-shaped delivery portal moves along the roadside, with a small cream receiving platform visible inside its circular opening. The rider approaches while holding the package forward at waist level; its orientation and lime tape direction stay unchanged. His upper body leans only as much as necessary toward the portal, while hips and skates remain aligned with the road. For a brief moment, the rider, package, and moving portal travel at almost the same speed side by side.
 
-### [9–10s] Shot 10 — Building-Side Delivery
-Rear-left tracking shot alongside a row of navy building facades with cream delivery hatches. Still moving at speed, the rider swings the newly caught box toward a lime-rimmed delivery hatch set into the wall. The hatch's chat-bubble-style indicator compresses and lights up on contact, then rebounds as the box locks into place inside it. The rider's skates never stop rolling — one skate stays the support leg while the delivery arm extends and retracts in one continuous motion, hips staying square to the direction of travel.
+### [9–10s] Shot 10 — Delivery Without Stopping
+Close-up of the rider's hand, package, and delivery portal. He pushes the package onto the small receiving platform inside the circular opening; as the box passes through, the elastic rim stretches slightly around the corners and then returns to its original shape. The receiving platform compresses downward under the package weight and rebounds once. Only after the package is securely supported does the rider release his hand, the orange sleeve sweeping forward out of frame as he continues skating. He does not stop, turn around, or reverse his feet to complete the delivery.
 
-### [10–11s] Shot 11 — Breaking Into the Open Boulevard
-Wide rear three-quarter shot as the alley opens outward into a broad urban boulevard beneath the saturated cobalt sky. The rider straightens up from his delivery lean, both skates gliding side by side, and pushes once more — support leg rolling forward as the opposite skate drives back and out — to build speed into the open space. Deep navy buildings recede into the distance on either side, and distant cyan route lines crisscross the sky above the boulevard. The road widens visibly in front of him, fully connected and locked.
+### [10–11s] Shot 11 — One Final Powerful Push
+The camera drops extremely low near the rider's left heel. The right skate rolls forward as the support leg while the left skate pushes strongly backward and outward one more time. The foreground left skate passes very close to the lens and appears dramatically oversized, showing mainly the heel, rear wheels, and outside of the boot — the toe stays pointed forward, away from the camera, toward the direction of travel. The powerful push accelerates the rider forward, and the delivery bag and orange sleeves lag behind by half a beat. This is never a high jump — the acceleration comes entirely from wheel propulsion.
 
-### [11–12s] Shot 12 — Hero Composition, Full Speed Ahead
-Final rear three-quarter hero shot, matching the reference image's signature composition. The rider is fully upright in a low aerodynamic glide, both skates aligned hip-width apart with one slightly forward, wheels blurring beneath him against the cream boulevard surface. The crossbody bag sits steady in its identical orientation, orange windbreaker catching the airflow, lime cap steady. The cyan route line stretches ahead of him into the distance beneath the cobalt sky, open and fully unfolded, as he continues forward without slowing — the motion carrying past the final frame rather than resolving into a stop.
+### [11–12s] Shot 12 — Ending in the Reference Composition
+The camera pulls slightly backward into an extreme rear low-angle composition matching the reference image. The left skate heel and lime wheels dominate the lower-left foreground while the right skate rolls farther ahead along the road. The orange jacket and deep navy pants form the central silhouette, with tall dark navy skyscrapers rising along both sides and visually converging inward. A huge cream circular light hangs in the cobalt-blue sky above the rider, and floating packages, lime location pins, three-dot chat bubbles, and cyan route lines occupy different depth layers around him. During the final 0.4 seconds, the camera matches the rider's speed and stabilizes the composition — the wheels keep rotating, the road keeps flowing backward, and the jacket, bag, and tape ends retain subtle residual motion. The shot never ends on a frozen airborne pose; it ends with the rider still genuinely skating forward inside the dramatic perspective of the reference image.
+
+---
+
+## Camera and Motion
+
+Use distinct camera language across the sequence: rear skate close-up, full-body rear tracking, waist-height rear three-quarter, high overhead, low curve-side tracking, low tunnel pursuit, delivery hand close-up, and extreme final rear low angle.
+
+- Never suddenly cross the character's travel axis and reverse screen direction
+- Even as camera position changes, left/right legs, skate toe/heel orientation, and body direction must stay physically consistent
+- Build speed through rapid wheel rotation, low aerodynamic posture, foreground objects sweeping past, layered parallax, brief camera acceleration, and selective motion blur — never by excessively stretching limbs or randomly swinging the feet
+- Apply stronger motion blur to backgrounds and passing foreground elements while keeping skate direction, wheel contact, hands, and package interaction visually readable
+
+## Physics and Elasticity
+
+- The roadway unfolds at its mechanical joints and may vibrate slightly through its support structures — never bend the entire rigid road surface like rubber
+- Inline wheels may compress microscopically at the contact patch; the skate boot and frame remain rigid
+- Location pins and the delivery portal may deform elastically only at the point of contact
+- Packages remain rigid — only box flaps, tape ends, jacket fabric, and the bag strap may move flexibly
+- During acceleration, loose objects lag backward; during cornering, the bag swings outward; when posture changes, fabric follows the body with slight delay
+- Elasticity and inertia must always correspond to the actual direction of force
+- Do not add unnecessary explosions, debris, sparks, or shockwaves to every interaction
+
+## Audio and Restrictions
+
+**Audio:** No dialogue, no narration, no singing, no speaking lip-sync, no background music. Use only: rolling wheel sounds, brief vibrations as wheels cross road joints, wind rush, jacket flutter, mechanical road-unfolding sounds, package-catching sounds, package placement sounds, and short elastic rebound effects from the graphic objects.
+
+**Restrictions:**
+- Do not duplicate the character or the skates
+- Do not cross or twist the legs unnaturally
+- No reversed skate orientation, no left-right skate swapping
+- No missing or duplicated wheels, no changing wheel count
+- No road penetration, no foot penetration, no frictionless drifting
+- Keep the three-dot speech-bubble graphic motif, but do not add readable written sentences
+- No subtitles, no titles, no logos, no watermarks
 
 ---
 
