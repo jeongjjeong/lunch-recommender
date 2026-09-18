@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>보글보글 - 너구리 버블</title>
+<style>
+    * { box-sizing: border-box; }
+
+    body {
+        font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 16px;
+        background: #120a1e;
+        color: #ffd9f0;
+        text-align: center;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    h1 {
+        margin: 0 0 4px;
+        font-size: 1.7em;
+        color: #ffe14d;
+        text-shadow: 3px 3px 0 #ff2e88;
+        letter-spacing: 3px;
+    }
+
+    .description {
+        margin: 0 0 14px;
+        font-size: 0.85em;
+        color: #ff9ed2;
+        letter-spacing: 1px;
+    }
+
+    #frame {
+        padding: 10px;
+        background: #000;
+        border: 4px solid #ff2e88;
+        border-radius: 14px;
+        box-shadow: 0 0 0 3px #12060f, 0 12px 34px rgba(255, 46, 136, 0.28);
+        width: min(660px, 100%);
+    }
+
+    canvas {
+        width: 100%;
+        height: auto;
+        display: block;
+        background: #000;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+    }
+
+    .keys {
+        margin-top: 14px;
+        font-size: 0.85em;
+        color: #c9a7e8;
+        line-height: 1.9;
+    }
+
+    kbd {
+        background: #2a1140;
+        border: 2px solid #ff2e88;
+        border-radius: 4px;
+        padding: 1px 7px;
+        font-family: inherit;
+        font-size: 0.9em;
+        color: #ffe14d;
+    }
+
+    #touchpad {
+        display: none;
+        margin-top: 14px;
+        width: min(660px, 100%);
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    #touchpad .group { display: flex; gap: 10px; }
+
+    #touchpad button {
+        width: 74px;
+        height: 74px;
+        border-radius: 12px;
+        border: 3px solid #ff2e88;
+        background: #2a1140;
+        color: #ffe14d;
+        font-size: 1.4em;
+        font-family: inherit;
+        font-weight: bold;
+    }
+
+    #touchpad button:active { background: #ff2e88; color: #fff; }
+
+    @media (hover: none) and (pointer: coarse) {
+        #touchpad { display: flex; }
+        .keys { display: none; }
+    }
+</style>
+</head>
+<body>
+
+<h1>보글보글</h1>
+<p class="description">너구리 버블 · BUBBLE RACCOON</p>
+
+<div id="frame">
+    <canvas id="game" width="320" height="240"></canvas>
+</div>
+
+<div id="touchpad">
+    <div class="group">
+        <button id="btnLeft" aria-label="왼쪽">◀</button>
+        <button id="btnRight" aria-label="오른쪽">▶</button>
+    </div>
+    <div class="group">
+        <button id="btnShoot" aria-label="버블">◯</button>
+        <button id="btnJump" aria-label="점프">▲</button>
+    </div>
+</div>
+
+<p class="keys">
+    <kbd>←</kbd> <kbd>→</kbd> 이동 &nbsp;·&nbsp;
+    <kbd>Space</kbd> / <kbd>↑</kbd> 점프 &nbsp;·&nbsp;
+    <kbd>Z</kbd> / <kbd>X</kbd> 버블 &nbsp;·&nbsp;
+    <kbd>Enter</kbd> 시작
+</p>
+
+<script>
+(function () {
+    'use strict';
+
+    /* =============================================================
+       해상도 320x240 저해상도 캔버스를 CSS 로 2배 확대해서
+       도트가 또렷하게 보이도록 한다 (고전 아케이드 느낌)
+    ============================================================= */
+    const W = 320, H = 240, TS = 16;
+    const COLS = W / TS, ROWS = H / TS;
+
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    /* ------------------------- 스프라이트 ------------------------- */
+    function bake(rows, pal) {
+        const h = rows.length, w = rows[0].length;
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const c = cv.getContext('2d');
+        for (let r = 0; r < h; r++) {
+            for (let x = 0; x < w; x++) {
+                const col = pal[rows[r][x]];
+                if (col) { c.fillStyle = col; c.fillRect(x, r, 1, 1); }
+            }
+        }
+        const fv = document.createElement('canvas');
+        fv.width = w; fv.height = h;
+        const f = fv.getContext('2d');
+        f.imageSmoothingEnabled = false;
+        f.translate(w, 0); f.scale(-1, 1);
+        f.drawImage(cv, 0, 0);
+        return { n: cv, f: fv, w: w, h: h };
+    }
+
+    function blit(s, x, y, flip) {
+        ctx.drawImage(flip ? s.f : s.n, Math.round(x), Math.round(y));
+    }
+
+    const OUT = '#180f2e';
+
+    // 너구리 (16x16, 오른쪽을 본다)
+    const RACCOON_ROWS = [
+        '..kk........kk..',
+        '.kiik......kiik.',
+        '.kggkkkkkkkkggk.',
+        '.kggggggggggggk.',
+        '.kggggggggggggk.',
+        '.kmmmmmmmmmmmmk.',
+        '.kmeeemmmmeeemk.',
+        '.kmepemmmmepemk.',
+        '.kgmmmwwwwmmmgk.',
+        '.kggwwwnnwwwggk.',
+        '.kgcwwwmmwwwcgk.',
+        '..kkggggggggkk..',
+        'kdddkgwwwwwwgk..',
+        'kgggkgwwwwwwgk..',
+        'kdddkgggggggk...',
+        '....kddk.kddk...'
+    ];
+
+    const RACCOON_BLINK_ROWS = RACCOON_ROWS.slice();
+    RACCOON_BLINK_ROWS[6] = '.kmmmmmmmmmmmmk.';
+    RACCOON_BLINK_ROWS[7] = '.kmwwwmmmmwwwmk.';
+
+    const RACCOON_PAL = {
+        k: OUT, g: '#cdd8f5', d: '#8593c2', m: '#2f2950',
+        w: '#fff6dd', e: '#ffffff', p: '#241b45', n: '#ff7fae', c: '#ff9ec9',
+        i: '#ff9ec9'
+    };
+
+    // 뿔 달린 적 (16x16)
+    const HORN_ROWS = [
+        '................',
+        '...k........k...',
+        '..kdk......kdk..',
+        '..kggkkkkkkggk..',
+        '.kggggggggggggk.',
+        '.kgeeeggggeeegk.',
+        '.kgepeggggepegk.',
+        '.kgeeeggggeeegk.',
+        '.kgcgggwwgggcgk.',
+        '.kggggwwwwggggk.',
+        '.kggggggggggggk.',
+        '.kggggggggggggk.',
+        '..kggggggggggk..',
+        '...kkgggggykk...',
+        '..kddk....kddk..',
+        '..kkkk....kkkk..'
+    ];
+
+    // 유령 적 (16x16)
+    const GHOST_ROWS = [
+        '.....kkkkkk.....',
+        '...kkwwwwwwkk...',
+        '..kwwwwwwwwwwk..',
+        '.kwwwwwwwwwwwwk.',
+        '.kwwnnnnnnwwwwk.',
+        '.kwnneeeennwwwk.',
+        '.kwnneppeennwwk.',
+        '.kwnneeeennwwwk.',
+        '.kwwnnnnnnwwwwk.',
+        '.kwwwwwwwwwwwwk.',
+        '.kwwwwcwwcwwwwk.',
+        '.kwwwwwwwwwwwwk.',
+        '.kwwwwwwwwwwwwk.',
+        '.kwkkwwkkwwkkwk.',
+        '..k..kk..kk..k..',
+        '................'
+    ];
+    GHOST_ROWS[6] = '.kwnneppeennwwk.';
+
+    function enemyPal(main, dark, eye) {
+        return {
+            k: OUT, g: main, d: dark, w: main, n: dark,
+            e: '#ffffff', p: eye || '#241b45', c: '#ff7fae', y: dark
+        };
+    }
+
+    const BUBBLE_ROWS = [
+        '.....aaaaaa.....',
+        '...aa......aa...',
+        '..a..........a..',
+        '.a...hh.......a.',
+        '.a...h........a.',
+        'a..............a',
+        'a..............a',
+        'a..............a',
+        'a..............a',
+        'a..............a',
+        'a..............a',
+        '.a............a.',
+        '.a............a.',
+        '..a..........a..',
+        '...aa......aa...',
+        '.....aaaaaa.....'
+    ];
+
+    const TILE_ROWS = [
+        'kkkkkkkkkkkkkkkk',
+        'khhhhhhhhhhhhhhk',
+        'khbbbbbbbbbbbbhk',
+        'khbbddbbbbddbbhk',
+        'khbbddbbbbddbbhk',
+        'khbbbbbbbbbbbbhk',
+        'khbbbbbbbbbbbbhk',
+        'khbbbbbbbbbbbbhk',
+        'khbbbbbbbbbbbbhk',
+        'khbbddbbbbddbbhk',
+        'khbbddbbbbddbbhk',
+        'khbbbbbbbbbbbbhk',
+        'khbbbbbbbbbbbbhk',
+        'kshhhhhhhhhhhhsk',
+        'kssssssssssssssk',
+        'kkkkkkkkkkkkkkkk'
+    ];
+
+    const ROUND_FRUIT_ROWS = [
+        '.......k.ll.',
+        '.......kll..',
+        '...kkkkkk...',
+        '..kAAAAAAk..',
+        '.kAAhhAAAAk.',
+        '.kAhAAAAAAk.',
+        '.kAAAAAAAAk.',
+        '.kAAAAAAAAk.',
+        '.kAAAAAAAAk.',
+        '..kAAAAAAk..',
+        '...kkkkkk...',
+        '............'
+    ];
+
+    const CANDY_ROWS = [
+        '............',
+        '.k........k.',
+        'kck.kkkk.kck',
+        'kcckAAAAkcck',
+        '.kkAAhhAAkk.',
+        '..kAAAAAAk..',
+        '..kAAAAAAk..',
+        'kcckAAAAkcck',
+        'kck.kkkk.kck',
+        '.k........k.',
+        '............',
+        '............'
+    ];
+
+    const GEM_ROWS = [
+        '............',
+        '...kkkkkk...',
+        '..kAAhhAAk..',
+        '.kAAAAAAAAk.',
+        '.kAAAAAAAAk.',
+        '..kAAAAAAk..',
+        '...kAAAAk...',
+        '....kAAk....',
+        '.....kk.....',
+        '............',
+        '............',
+        '............'
+    ];
+
+    const HEART_ROWS = [
+        '.aa..aa.',
+        'aaaaaaaa',
+        'aaaaaaaa',
+        'aaaaaaaa',
+        '.aaaaaa.',
+        '..aaaa..',
+        '...aa...',
+        '........'
+    ];
+
+    const SPR = {};
+
+    function initSprites() {
+        SPR.raccoon = bake(RACCOON_ROWS, RACCOON_PAL);
+        SPR.raccoonBlink = bake(RACCOON_BLINK_ROWS, RACCOON_PAL);
+
+        SPR.enemy = [
+            bake(HORN_ROWS, enemyPal('#5bdc4a', '#2a9b2a')),
+            bake(GHOST_ROWS, enemyPal('#ffffff', '#ff4fa3')),
+            bake(HORN_ROWS, enemyPal('#4fc9ff', '#1e79cf'))
+        ];
+        SPR.enemyAngry = [
+            bake(HORN_ROWS, enemyPal('#ff5a5a', '#b02020')),
+            bake(GHOST_ROWS, enemyPal('#ffd0d0', '#d81f5c')),
+            bake(HORN_ROWS, enemyPal('#ff7a3d', '#c23c00'))
+        ];
+
+        SPR.bubble = bake(BUBBLE_ROWS, { a: '#8fe3ff', h: '#ffffff' });
+        SPR.bubbleHot = bake(BUBBLE_ROWS, { a: '#ff7a9a', h: '#ffffff' });
+        SPR.tile = bake(TILE_ROWS, {
+            k: '#0a0518', h: '#7fa0ff', b: '#2b3fae', d: '#a9c8ff', s: '#182270'
+        });
+        SPR.heart = bake(HEART_ROWS, { a: '#ff4f88' });
+
+        SPR.fruit = FRUITS.map(function (f) {
+            if (f.shape === 'candy') return bake(CANDY_ROWS, { k: OUT, A: f.color, h: '#ffffff', c: f.sub });
+            if (f.shape === 'gem') return bake(GEM_ROWS, { k: OUT, A: f.color, h: '#ffffff' });
+            return bake(ROUND_FRUIT_ROWS, { k: OUT, A: f.color, h: '#ffffff', l: f.sub });
+        });
+
+        SPR.letter = LETTER_COLORS.map(function (col) {
+            return bake(BUBBLE_ROWS, { a: col, h: '#ffffff' });
+        });
+    }
+
+    /* ------------------------- 픽셀 폰트 ------------------------- */
+    const FONT = {
+        A: '01110,10001,10001,11111,10001,10001,10001',
+        B: '11110,10001,10001,11110,10001,10001,11110',
+        C: '01110,10001,10000,10000,10000,10001,01110',
+        D: '11110,10001,10001,10001,10001,10001,11110',
+        E: '11111,10000,10000,11110,10000,10000,11111',
+        F: '11111,10000,10000,11110,10000,10000,10000',
+        G: '01110,10001,10000,10111,10001,10001,01111',
+        H: '10001,10001,10001,11111,10001,10001,10001',
+        I: '11111,00100,00100,00100,00100,00100,11111',
+        J: '00111,00010,00010,00010,00010,10010,01100',
+        K: '10001,10010,10100,11000,10100,10010,10001',
+        L: '10000,10000,10000,10000,10000,10000,11111',
+        M: '10001,11011,10101,10101,10001,10001,10001',
+        N: '10001,11001,10101,10011,10001,10001,10001',
+        O: '01110,10001,10001,10001,10001,10001,01110',
+        P: '11110,10001,10001,11110,10000,10000,10000',
+        Q: '01110,10001,10001,10001,10101,10010,01101',
+        R: '11110,10001,10001,11110,10100,10010,10001',
+        S: '01111,10000,10000,01110,00001,00001,11110',
+        T: '11111,00100,00100,00100,00100,00100,00100',
+        U: '10001,10001,10001,10001,10001,10001,01110',
+        V: '10001,10001,10001,10001,10001,01010,00100',
+        W: '10001,10001,10001,10101,10101,11011,10001',
+        X: '10001,10001,01010,00100,01010,10001,10001',
+        Y: '10001,10001,01010,00100,00100,00100,00100',
+        Z: '11111,00001,00010,00100,01000,10000,11111',
+        '0': '01110,10001,10011,10101,11001,10001,01110',
+        '1': '00100,01100,00100,00100,00100,00100,01110',
+        '2': '01110,10001,00001,00010,00100,01000,11111',
+        '3': '11111,00010,00100,00010,00001,10001,01110',
+        '4': '00010,00110,01010,10010,11111,00010,00010',
+        '5': '11111,10000,11110,00001,00001,10001,01110',
+        '6': '00110,01000,10000,11110,10001,10001,01110',
+        '7': '11111,00001,00010,00100,01000,01000,01000',
+        '8': '01110,10001,10001,01110,10001,10001,01110',
+        '9': '01110,10001,10001,01111,00001,00010,01100',
+        ' ': '00000,00000,00000,00000,00000,00000,00000',
+        '.': '00000,00000,00000,00000,00000,01100,01100',
+        '!': '00100,00100,00100,00100,00100,00000,00100',
+        '-': '00000,00000,00000,11111,00000,00000,00000',
+        ':': '00000,01100,01100,00000,01100,01100,00000',
+        '/': '00001,00010,00010,00100,01000,01000,10000'
+    };
+
+    const glyphCache = {};
+
+    function glyph(ch) {
+        if (glyphCache[ch]) return glyphCache[ch];
+        const def = FONT[ch] || FONT[' '];
+        glyphCache[ch] = def.split(',');
+        return glyphCache[ch];
+    }
+
+    function textWidth(str, scale) {
+        return str.length * 6 * (scale || 1) - (scale || 1);
+    }
+
+    function drawText(str, x, y, color, scale) {
+        const s = scale || 1;
+        ctx.fillStyle = color;
+        let px = Math.round(x);
+        const py = Math.round(y);
+        for (const ch of str.toUpperCase()) {
+            const rows = glyph(ch);
+            for (let r = 0; r < 7; r++) {
+                const row = rows[r];
+                for (let c = 0; c < 5; c++) {
+                    if (row[c] === '1') ctx.fillRect(px + c * s, py + r * s, s, s);
+                }
+            }
+            px += 6 * s;
+        }
+    }
+
+    function drawTextCenter(str, cx, y, color, scale) {
+        drawText(str, Math.round(cx - textWidth(str, scale) / 2), y, color, scale);
+    }
+
+    // 한글은 작게 그린 뒤 2배로 확대해 도트 느낌을 살린다
+    const koCache = {};
+
+    function koText(text, size, color) {
+        const key = text + '|' + size + '|' + color;
+        if (koCache[key]) return koCache[key];
+
+        const measure = document.createElement('canvas').getContext('2d');
+        const font = 'bold ' + size + 'px "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+        measure.font = font;
+        const w = Math.ceil(measure.measureText(text).width) + 2;
+        const h = size + 6;
+
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const c = cv.getContext('2d');
+        c.font = font;
+        c.textBaseline = 'top';
+        c.fillStyle = color;
+        c.fillText(text, 1, 2);
+
+        const img = c.getImageData(0, 0, w, h);
+        for (let i = 3; i < img.data.length; i += 4) {
+            img.data[i] = img.data[i] > 110 ? 255 : 0;
+        }
+        c.putImageData(img, 0, 0);
+
+        koCache[key] = { cv: cv, w: w, h: h };
+        return koCache[key];
+    }
+
+    function drawKo(text, size, color, cx, y) {
+        const t = koText(text, size, color);
+        ctx.drawImage(t.cv, Math.round(cx - t.w), Math.round(y), t.w * 2, t.h * 2);
+    }
+
+    /* ------------------------- 데이터 ------------------------- */
+    const LEVELS = [
+        [
+            '####################',
+            '#..................#',
+            '#..................#',
+            '#...E.........E....#',
+            '#..####.....####...#',
+            '#..................#',
+            '#..................#',
+            '#.####..####..####.#',
+            '#..................#',
+            '#..................#',
+            '#....##########....#',
+            '#..................#',
+            '#..................#',
+            '#.P..............E.#',
+            '####################'
+        ],
+        [
+            '####################',
+            '#..................#',
+            '#...E..........E...#',
+            '#.#####....#####...#',
+            '#..................#',
+            '#..................#',
+            '#......######......#',
+            '#..................#',
+            '#.###..........###.#',
+            '#.....E....E.......#',
+            '#..................#',
+            '#...####....####...#',
+            '#..................#',
+            '#.P................#',
+            '####################'
+        ],
+        [
+            '####################',
+            '#..................#',
+            '#..E..........E....#',
+            '#.###..####..###...#',
+            '#..................#',
+            '#....##....##......#',
+            '#..........E.......#',
+            '#.##..######..##...#',
+            '#..................#',
+            '#......E...E.......#',
+            '#..####......####..#',
+            '#..................#',
+            '#..................#',
+            '#.P................#',
+            '####################'
+        ],
+        [
+            '####################',
+            '#.E..............E.#',
+            '#.####..####..####.#',
+            '#..................#',
+            '#....E........E....#',
+            '#..######..######..#',
+            '#..................#',
+            '#.##..........##...#',
+            '#......E..E........#',
+            '#...##########.....#',
+            '#..................#',
+            '#.####......####...#',
+            '#..................#',
+            '#.P..............E.#',
+            '####################'
+        ]
+    ];
+
+    const FRUITS = [
+        { color: '#ff3b5c', sub: '#4bd36b', shape: 'round', score: 100 },
+        { color: '#ff9f1c', sub: '#4bd36b', shape: 'round', score: 300 },
+        { color: '#a259ff', sub: '#4bd36b', shape: 'round', score: 500 },
+        { color: '#6ee36e', sub: '#2a9b2a', shape: 'round', score: 700 },
+        { color: '#ff7fae', sub: '#ffe14d', shape: 'candy', score: 1000 },
+        { color: '#5ce1e6', sub: '#ffffff', shape: 'gem', score: 2000 }
+    ];
+
+    const LETTERS = ['E', 'X', 'T', 'E', 'N', 'D'];
+    const LETTER_COLORS = ['#ff4f6d', '#ff9f1c', '#ffe14d', '#5bdc4a', '#4fc9ff', '#c86bff'];
+
+    /* ------------------------- 상태 ------------------------- */
+    let grid = [];
+    let state = 'title';
+    let levelIndex = 0;
+    let score = 0, best = 0, lives = 3;
+    let timer = 0, frame = 0;
+    let extend = [false, false, false, false, false, false];
+
+    let player = null;
+    let enemies = [], bubbles = [], fruits = [], letters = [], particles = [];
+
+    const keys = Object.create(null);
+    const pressed = Object.create(null);
+
+    /* ------------------------- 입력 ------------------------- */
+    const KEYMAP = {
+        ArrowLeft: 'left', KeyA: 'left',
+        ArrowRight: 'right', KeyD: 'right',
+        ArrowUp: 'jump', KeyW: 'jump', Space: 'jump',
+        KeyZ: 'shoot', KeyX: 'shoot', ShiftLeft: 'shoot', ShiftRight: 'shoot',
+        Enter: 'start', NumpadEnter: 'start'
+    };
+
+    function setKey(name, down) {
+        if (!name) return;
+        if (down && !keys[name]) pressed[name] = true;
+        keys[name] = down;
+    }
+
+    window.addEventListener('keydown', function (e) {
+        const name = KEYMAP[e.code];
+        if (!name) return;
+        e.preventDefault();
+        audioOn();
+        setKey(name, true);
+    });
+
+    window.addEventListener('keyup', function (e) {
+        const name = KEYMAP[e.code];
+        if (!name) return;
+        e.preventDefault();
+        setKey(name, false);
+    });
+
+    function bindTouch(id, name) {
+        const el = document.getElementById(id);
+        const down = function (e) {
+            e.preventDefault(); audioOn(); setKey(name, true);
+            if (state !== 'playing') setKey('start', true);
+        };
+        const up = function (e) { e.preventDefault(); setKey(name, false); setKey('start', false); };
+        el.addEventListener('touchstart', down, { passive: false });
+        el.addEventListener('touchend', up, { passive: false });
+        el.addEventListener('touchcancel', up, { passive: false });
+        el.addEventListener('mousedown', down);
+        el.addEventListener('mouseup', up);
+        el.addEventListener('mouseleave', up);
+    }
+
+    bindTouch('btnLeft', 'left');
+    bindTouch('btnRight', 'right');
+    bindTouch('btnJump', 'jump');
+    bindTouch('btnShoot', 'shoot');
+
+    canvas.addEventListener('mousedown', function () { audioOn(); setKey('start', true); });
+    canvas.addEventListener('mouseup', function () { setKey('start', false); });
+
+    /* ------------------------- 사운드 ------------------------- */
+    let actx = null;
+
+    function audioOn() {
+        if (actx) { if (actx.state === 'suspended') actx.resume(); return; }
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) actx = new AC();
+    }
+
+    function beep(freq, dur, type, vol) {
+        if (!actx) return;
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+        osc.type = type || 'square';
+        osc.frequency.setValueAtTime(freq, actx.currentTime);
+        gain.gain.setValueAtTime(vol || 0.05, actx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+        osc.connect(gain).connect(actx.destination);
+        osc.start();
+        osc.stop(actx.currentTime + dur);
+    }
+
+    function jingle(notes) {
+        notes.forEach(function (n, i) {
+            setTimeout(function () { beep(n, 0.12, 'square', 0.05); }, i * 90);
+        });
+    }
+
+    /* ------------------------- 레벨 ------------------------- */
+    function loadLevel(i) {
+        const map = LEVELS[i % LEVELS.length];
+        const loop = Math.floor(i / LEVELS.length);
+        grid = map.map(function (row) { return row.split(''); });
+
+        enemies = []; bubbles = []; fruits = []; letters = []; particles = [];
+        let start = { x: 2 * TS, y: 12 * TS };
+        let n = 0;
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const ch = grid[r][c];
+                if (ch === 'P') { start = { x: c * TS, y: r * TS }; grid[r][c] = '.'; }
+                else if (ch === 'E') {
+                    enemies.push(makeEnemy(c * TS + 2, r * TS + 2, loop, n++));
+                    grid[r][c] = '.';
+                }
+            }
+        }
+
+        player = {
+            x: start.x + 2, y: start.y + 3, w: 12, h: 13,
+            vx: 0, vy: 0, dir: 1, onGround: false,
+            invincible: 60, shootCooldown: 0, squash: 0, blink: 0, walk: 0
+        };
+    }
+
+    function makeEnemy(x, y, loop, n) {
+        const speed = 0.55 + loop * 0.15;
+        return {
+            x: x, y: y, w: 12, h: 12,
+            vx: (n % 2 === 0 ? -1 : 1) * speed,
+            vy: 0, speed: speed, type: n % 3,
+            onGround: false, angry: false, anim: (n * 17) % 90
+        };
+    }
+
+    /* ------------------------- 물리 ------------------------- */
+    const GRAVITY = 0.28, MAX_FALL = 5.6, JUMP_V = -5.35, RUN_SPEED = 1.55;
+
+    function solid(c, r) {
+        if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return false;
+        return grid[r][c] === '#';
+    }
+
+    function moveX(e) {
+        e.hitWall = false;
+        e.x += e.vx;
+        const top = Math.floor(e.y / TS);
+        const bottom = Math.floor((e.y + e.h - 1) / TS);
+        if (e.vx > 0) {
+            const c = Math.floor((e.x + e.w - 1) / TS);
+            for (let r = top; r <= bottom; r++) {
+                if (solid(c, r)) { e.x = c * TS - e.w; e.hitWall = true; break; }
+            }
+        } else if (e.vx < 0) {
+            const c = Math.floor(e.x / TS);
+            for (let r = top; r <= bottom; r++) {
+                if (solid(c, r)) { e.x = (c + 1) * TS; e.hitWall = true; break; }
+            }
+        }
+    }
+
+    // 발판은 위에서 내려올 때만 막는다 (아래에서 뚫고 올라갈 수 있음)
+    function moveY(e) {
+        const prevBottom = e.y + e.h;
+        e.y += e.vy;
+        e.onGround = false;
+        const left = Math.floor(e.x / TS);
+        const right = Math.floor((e.x + e.w - 1) / TS);
+        if (e.vy > 0) {
+            const r = Math.floor((e.y + e.h - 1) / TS);
+            for (let c = left; c <= right; c++) {
+                if (solid(c, r) && prevBottom <= r * TS + 1) {
+                    e.y = r * TS - e.h; e.vy = 0; e.onGround = true;
+                    break;
+                }
+            }
+        }
+        if (e.y < 0) { e.y = 0; if (e.vy < 0) e.vy = 0; }
+        if (e.y > H) e.y = -e.h;
+    }
+
+    function overlap(a, b) {
+        return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    /* ------------------------- 업데이트 ------------------------- */
+    function update() {
+        frame++;
+
+        if (state === 'title') {
+            if (pressed.start || pressed.jump || pressed.shoot) startGame();
+            updateParticles();
+            return;
+        }
+
+        if (state === 'gameover' || state === 'allclear') {
+            timer++;
+            updateParticles();
+            if (timer > 45 && (pressed.start || pressed.jump || pressed.shoot)) {
+                state = 'title'; timer = 0;
+            }
+            return;
+        }
+
+        if (state === 'cleared') {
+            timer--;
+            player.walk++;
+            updateParticles();
+            updateFruits();
+            updateLetters();
+            if (timer <= 0) {
+                levelIndex++;
+                if (levelIndex >= LEVELS.length * 3) {
+                    state = 'allclear'; timer = 0;
+                    if (score > best) best = score;
+                } else {
+                    loadLevel(levelIndex);
+                    state = 'playing';
+                }
+            }
+            return;
+        }
+
+        if (state === 'dying') {
+            timer--;
+            updateParticles();
+            updateBubbles();
+            if (timer <= 0) {
+                if (lives <= 0) {
+                    state = 'gameover'; timer = 0;
+                    if (score > best) best = score;
+                } else {
+                    loadLevel(levelIndex);
+                    state = 'playing';
+                }
+            }
+            return;
+        }
+
+        updatePlayer();
+        updateEnemies();
+        updateBubbles();
+        updateFruits();
+        updateLetters();
+        updateParticles();
+
+        const trapped = bubbles.some(function (b) { return b.captured; });
+        if (enemies.length === 0 && !trapped) {
+            state = 'cleared';
+            timer = 120;
+            jingle([660, 880, 1046]);
+        }
+    }
+
+    function startGame() {
+        score = 0; lives = 3; levelIndex = 0;
+        extend = [false, false, false, false, false, false];
+        loadLevel(0);
+        state = 'playing';
+        jingle([523, 659, 784]);
+    }
+
+    function updatePlayer() {
+        const p = player;
+        if (p.invincible > 0) p.invincible--;
+        if (p.shootCooldown > 0) p.shootCooldown--;
+        if (p.squash > 0) p.squash--;
+        if (p.blink > 0) p.blink--;
+        else if (Math.random() < 0.006) p.blink = 8;
+
+        if (keys.left && !keys.right) { p.vx = -RUN_SPEED; p.dir = -1; p.walk++; }
+        else if (keys.right && !keys.left) { p.vx = RUN_SPEED; p.dir = 1; p.walk++; }
+        else { p.vx = 0; p.walk = 0; }
+
+        if (pressed.jump && p.onGround) {
+            p.vy = JUMP_V;
+            p.onGround = false;
+            p.squash = 6;
+            beep(500, 0.07, 'square', 0.04);
+        }
+
+        const wasFalling = p.vy > 1;
+        p.vy = Math.min(p.vy + GRAVITY, MAX_FALL);
+        moveX(p);
+        moveY(p);
+        if (p.onGround && wasFalling) p.squash = 5;
+
+        // 빈 버블 위에서 통통 튄다
+        if (p.vy > 0) {
+            for (const b of bubbles) {
+                if (b.captured || b.popping) continue;
+                if (p.x + p.w > b.x + 2 && p.x < b.x + b.w - 2 &&
+                    p.y + p.h > b.y && p.y + p.h < b.y + b.h * 0.7) {
+                    p.y = b.y - p.h;
+                    p.vy = keys.jump ? JUMP_V : -3.1;
+                    p.squash = 6;
+                    b.life = Math.max(b.life - 30, 10);
+                    beep(760, 0.05, 'sine', 0.04);
+                    break;
+                }
+            }
+        }
+
+        if (pressed.shoot && p.shootCooldown === 0 && bubbles.length < 12) {
+            bubbles.push({
+                x: p.x + (p.dir > 0 ? p.w - 2 : -12), y: p.y - 1,
+                w: 14, h: 14,
+                vx: p.dir * 3.7, vy: 0,
+                travel: 26, life: 460, captured: null,
+                popping: 0, wobble: Math.random() * 6.28
+            });
+            p.shootCooldown = 11;
+            beep(900, 0.05, 'sine', 0.05);
+        }
+
+        if (p.invincible === 0) {
+            for (const e of enemies) {
+                if (overlap(p, e)) { killPlayer(); return; }
+            }
+        }
+    }
+
+    function killPlayer() {
+        lives--;
+        state = 'dying';
+        timer = 90;
+        burst(player.x + 6, player.y + 6, '#cdd8f5', 14);
+        burst(player.x + 6, player.y + 6, '#ff7fae', 8);
+        beep(220, 0.3, 'sawtooth', 0.07);
+        setTimeout(function () { beep(130, 0.4, 'sawtooth', 0.07); }, 170);
+    }
+
+    function updateEnemies() {
+        for (const e of enemies) {
+            e.anim++;
+            const speed = e.angry ? e.speed * 1.8 : e.speed;
+            e.vx = (e.vx >= 0 ? 1 : -1) * speed;
+
+            e.vy = Math.min(e.vy + GRAVITY, MAX_FALL);
+            moveX(e);
+            if (e.hitWall) e.vx = -e.vx;
+            moveY(e);
+
+            if (e.onGround) {
+                const aheadC = Math.floor((e.vx > 0 ? e.x + e.w + 1 : e.x - 1) / TS);
+                const belowR = Math.floor((e.y + e.h + 1) / TS);
+                if (!solid(aheadC, belowR) && Math.random() < 0.85) e.vx = -e.vx;
+                if (Math.random() < 0.005) e.vy = JUMP_V * 0.85;
+            }
+        }
+    }
+
+    function updateBubbles() {
+        for (let i = bubbles.length - 1; i >= 0; i--) {
+            const b = bubbles[i];
+
+            if (b.popping > 0) {
+                b.popping--;
+                if (b.popping === 0) bubbles.splice(i, 1);
+                continue;
+            }
+
+            b.life--;
+            b.wobble += 0.09;
+
+            if (b.travel > 0) {
+                b.travel--;
+                b.x += b.vx;
+                const r0 = Math.floor(b.y / TS), r1 = Math.floor((b.y + b.h - 1) / TS);
+                const c = b.vx > 0 ? Math.floor((b.x + b.w - 1) / TS) : Math.floor(b.x / TS);
+                for (let r = r0; r <= r1; r++) {
+                    if (solid(c, r)) { b.x -= b.vx; b.travel = 0; break; }
+                }
+                if (b.travel === 0) b.vx = 0;
+            } else {
+                b.y -= b.captured ? 0.38 : 0.48;
+                b.x += Math.sin(b.wobble) * 0.3;
+                if (b.y < TS + 1) { b.y = TS + 1; b.life -= 2; }
+            }
+
+            if (!b.captured) {
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    if (overlap(b, enemies[j])) {
+                        b.captured = enemies[j];
+                        b.life = 340;
+                        b.vx = 0; b.travel = 0;
+                        enemies.splice(j, 1);
+                        beep(320, 0.12, 'sine', 0.06);
+                        break;
+                    }
+                }
+            }
+
+            if (state === 'playing' && b.captured && overlap(b, player)) {
+                popBubble(i, true);
+                continue;
+            }
+
+            if (b.life <= 0) popBubble(i, false);
+        }
+    }
+
+    function popBubble(index, byPlayer) {
+        const b = bubbles[index];
+        if (!b || b.popping > 0) return;
+
+        if (b.captured && byPlayer) {
+            score += 500;
+            const idx = Math.floor(Math.random() * FRUITS.length);
+            fruits.push({
+                x: b.x + 1, y: b.y + 1, w: 10, h: 10,
+                vy: 0, life: 460, idx: idx
+            });
+            burst(b.x + 7, b.y + 7, '#ff9ed2', 12);
+            burst(b.x + 7, b.y + 7, '#ffe14d', 6);
+            beep(1046, 0.08, 'square', 0.05);
+            setTimeout(function () { beep(1318, 0.1, 'square', 0.05); }, 70);
+
+            // EXTEND 글자 버블은 가끔 등장한다
+            const missing = [];
+            for (let k = 0; k < LETTERS.length; k++) if (!extend[k]) missing.push(k);
+            if (missing.length && Math.random() < 0.3) {
+                const li = missing[Math.floor(Math.random() * missing.length)];
+                letters.push({
+                    x: b.x, y: b.y, w: 14, h: 14,
+                    vx: (Math.random() < 0.5 ? -1 : 1) * 0.5,
+                    life: 620, idx: li, wobble: Math.random() * 6.28
+                });
+            }
+
+            // 가까운 버블은 연쇄로 터진다
+            for (let k = bubbles.length - 1; k >= 0; k--) {
+                const o = bubbles[k];
+                if (o === b || o.popping > 0) continue;
+                const dx = o.x - b.x, dy = o.y - b.y;
+                if (dx * dx + dy * dy < 30 * 30) popBubble(k, true);
+            }
+        } else if (b.captured) {
+            const e = b.captured;
+            e.x = b.x + 1; e.y = b.y + 1; e.vy = 0; e.angry = true;
+            enemies.push(e);
+            beep(170, 0.16, 'sawtooth', 0.06);
+        } else {
+            burst(b.x + 7, b.y + 7, '#8fe3ff', 6);
+        }
+
+        b.captured = null;
+        b.popping = 6;
+    }
+
+    function updateFruits() {
+        for (let i = fruits.length - 1; i >= 0; i--) {
+            const f = fruits[i];
+            f.life--;
+            f.vy = Math.min(f.vy + GRAVITY, MAX_FALL);
+            moveY(f);
+            if (state === 'playing' && overlap(f, player)) {
+                const gained = FRUITS[f.idx].score;
+                score += gained;
+                particles.push({ text: '+' + gained, x: f.x + 5, y: f.y, vy: -0.5, life: 45, color: '#ffe14d' });
+                burst(f.x + 5, f.y + 5, '#ffe14d', 5);
+                fruits.splice(i, 1);
+                beep(784, 0.07, 'triangle', 0.06);
+                continue;
+            }
+            if (f.life <= 0) fruits.splice(i, 1);
+        }
+    }
+
+    function updateLetters() {
+        for (let i = letters.length - 1; i >= 0; i--) {
+            const l = letters[i];
+            l.life--;
+            l.wobble += 0.07;
+            l.x += l.vx;
+            l.y += Math.sin(l.wobble) * 0.35 - 0.12;
+            if (l.x < TS || l.x + l.w > W - TS) l.vx = -l.vx;
+            if (l.y < TS) l.y = TS;
+
+            if (state === 'playing' && overlap(l, player)) {
+                extend[l.idx] = true;
+                score += 500;
+                particles.push({ text: LETTERS[l.idx], x: l.x + 7, y: l.y, vy: -0.5, life: 45, color: LETTER_COLORS[l.idx] });
+                burst(l.x + 7, l.y + 7, LETTER_COLORS[l.idx], 8);
+                letters.splice(i, 1);
+                beep(988, 0.09, 'square', 0.06);
+
+                if (extend.every(Boolean)) {
+                    extend = [false, false, false, false, false, false];
+                    lives++;
+                    score += 5000;
+                    particles.push({ text: '1UP!', x: player.x + 6, y: player.y - 12, vy: -0.4, life: 90, color: '#ff4f88' });
+                    for (let k = 0; k < 10; k++) {
+                        particles.push({
+                            heart: true, x: player.x + 6, y: player.y,
+                            vx: (Math.random() - 0.5) * 2.4, vy: -1 - Math.random() * 1.6,
+                            life: 60, color: '#ff4f88'
+                        });
+                    }
+                    jingle([784, 988, 1175, 1568]);
+                }
+                continue;
+            }
+            if (l.life <= 0) letters.splice(i, 1);
+        }
+    }
+
+    function burst(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            const a = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+            const s = 0.7 + Math.random() * 1.3;
+            particles.push({
+                x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+                life: 16 + Math.random() * 12, color: color
+            });
+        }
+    }
+
+    function updateParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.life--;
+            p.x += p.vx || 0;
+            p.y += p.vy || 0;
+            if (p.vx !== undefined) p.vy += 0.07;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+    }
+
+    /* ------------------------- 그리기 ------------------------- */
+    const stars = [];
+    for (let i = 0; i < 40; i++) {
+        stars.push({ x: (Math.random() * W) | 0, y: (Math.random() * H) | 0, p: (Math.random() * 100) | 0 });
+    }
+
+    function draw() {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, W, H);
+
+        for (const s of stars) {
+            const t = (frame + s.p) % 120;
+            if (t < 60) {
+                ctx.fillStyle = t < 30 ? '#3a2a6a' : '#5a3f9a';
+                ctx.fillRect(s.x, s.y, 1, 1);
+            }
+        }
+
+        if (state === 'title') { drawTitle(); return; }
+
+        drawLevel();
+        for (const f of fruits) blit(SPR.fruit[f.idx], f.x - 1, f.y - 1, false);
+        for (const e of enemies) drawEnemy(e);
+        if (state !== 'dying') drawPlayer();
+        for (const b of bubbles) drawBubble(b);
+        for (const l of letters) drawLetter(l);
+        drawParticles();
+        drawHUD();
+
+        if (state === 'cleared') {
+            banner();
+            drawTextCenter('STAGE CLEAR!', W / 2, H / 2 - 14, '#5bdc4a', 2);
+            drawKo('잘했어!', 10, '#ffe14d', W / 2, H / 2 + 4);
+        }
+        if (state === 'dying') {
+            banner();
+            drawKo('아야!', 12, '#ff7fae', W / 2, H / 2 - 12);
+        }
+        if (state === 'gameover') {
+            banner();
+            drawTextCenter('GAME OVER', W / 2, H / 2 - 16, '#ff4f6d', 2);
+            drawTextCenter('SCORE ' + score, W / 2, H / 2 + 6, '#ffe14d', 1);
+            if (Math.floor(frame / 25) % 2 === 0) {
+                drawTextCenter('PUSH ENTER', W / 2, H / 2 + 20, '#ffffff', 1);
+            }
+        }
+        if (state === 'allclear') {
+            banner();
+            drawTextCenter('ALL CLEAR!', W / 2, H / 2 - 16, '#ffe14d', 2);
+            drawTextCenter('SCORE ' + score, W / 2, H / 2 + 6, '#5bdc4a', 1);
+            if (Math.floor(frame / 25) % 2 === 0) {
+                drawTextCenter('PUSH ENTER', W / 2, H / 2 + 20, '#ffffff', 1);
+            }
+        }
+    }
+
+    function banner() {
+        ctx.fillStyle = 'rgba(0,0,0,0.72)';
+        ctx.fillRect(0, H / 2 - 26, W, 54);
+        ctx.fillStyle = '#ff2e88';
+        ctx.fillRect(0, H / 2 - 27, W, 1);
+        ctx.fillRect(0, H / 2 + 28, W, 1);
+    }
+
+    function drawLevel() {
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (r === 0) continue;   // 맨 윗줄은 점수판이 차지한다
+                if (grid[r][c] === '#') blit(SPR.tile, c * TS, r * TS, false);
+            }
+        }
+    }
+
+    function drawPlayer() {
+        const p = player;
+        if (p.invincible > 0 && Math.floor(frame / 3) % 2 === 0) return;
+
+        let y = p.y - 3;
+        if (p.walk > 0 && p.onGround && Math.floor(p.walk / 6) % 2 === 0) y -= 1;
+        if (p.squash > 0) y += 1;
+
+        blit(p.blink > 0 ? SPR.raccoonBlink : SPR.raccoon, p.x - 2, y, p.dir < 0);
+    }
+
+    function drawEnemy(e) {
+        const bob = Math.sin(e.anim * 0.12) < 0 ? 1 : 0;
+        const set = e.angry ? SPR.enemyAngry : SPR.enemy;
+        blit(set[e.type], e.x - 2, e.y - 4 + bob, e.vx < 0);
+
+        if (e.angry && Math.floor(frame / 8) % 2 === 0) {
+            drawText('!', Math.round(e.x + 4), Math.round(e.y - 12), '#ff4f6d', 1);
+        }
+    }
+
+    function drawBubble(b) {
+        if (b.popping > 0) {
+            const t = 6 - b.popping;
+            ctx.fillStyle = '#cdf3ff';
+            for (let i = 0; i < 8; i++) {
+                const a = (Math.PI * 2 * i) / 8;
+                ctx.fillRect(Math.round(b.x + 7 + Math.cos(a) * (5 + t * 2)),
+                             Math.round(b.y + 7 + Math.sin(a) * (5 + t * 2)), 1, 1);
+            }
+            return;
+        }
+
+        const hot = b.captured && b.life < 90 && Math.floor(frame / 5) % 2 === 0;
+
+        if (b.captured) {
+            const e = b.captured;
+            e.x = b.x + 1; e.y = b.y + 1;
+            const set = e.angry ? SPR.enemyAngry : SPR.enemy;
+            blit(set[e.type], b.x - 1, b.y - 2, false);
+
+            // 어질어질 반짝임
+            for (let i = 0; i < 3; i++) {
+                const a = frame * 0.12 + (Math.PI * 2 * i) / 3;
+                ctx.fillStyle = '#ffe14d';
+                ctx.fillRect(Math.round(b.x + 7 + Math.cos(a) * 8), Math.round(b.y + 1 + Math.sin(a) * 3), 1, 1);
+            }
+        }
+
+        blit(hot ? SPR.bubbleHot : SPR.bubble, b.x - 1, b.y - 1, false);
+    }
+
+    function drawLetter(l) {
+        blit(SPR.letter[l.idx], l.x - 1, l.y - 1, false);
+        drawText(LETTERS[l.idx], Math.round(l.x + 5), Math.round(l.y + 4), LETTER_COLORS[l.idx], 1);
+    }
+
+    function drawParticles() {
+        for (const p of particles) {
+            if (p.life < 6 && Math.floor(frame / 2) % 2 === 0) continue;
+            if (p.text) {
+                drawTextCenter(p.text, p.x, p.y, p.color, 1);
+            } else if (p.heart) {
+                blit(SPR.heart, p.x - 4, p.y - 4, false);
+            } else {
+                ctx.fillStyle = p.color;
+                ctx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2);
+            }
+        }
+    }
+
+    function drawHUD() {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, W, TS);
+        ctx.fillStyle = '#2a1140';
+        ctx.fillRect(0, TS - 1, W, 1);
+
+        drawText('SCORE ' + score, 4, 4, '#ffe14d', 1);
+        drawText('ST ' + (levelIndex + 1), 118, 4, '#8fe3ff', 1);
+
+        // EXTEND 수집 현황 (알록달록 동그란 칩)
+        for (let i = 0; i < LETTERS.length; i++) {
+            drawChip(158 + i * 12, 3, i, extend[i]);
+        }
+
+        for (let i = 0; i < Math.min(lives, 5); i++) {
+            blit(SPR.heart, W - 10 - i * 9, 4, false);
+        }
+    }
+
+    // 레퍼런스의 알파벳 구슬 느낌: 모서리를 깎은 10x10 동그란 칩
+    function drawChip(x, y, i, lit) {
+        ctx.fillStyle = lit ? LETTER_COLORS[i] : '#241b45';
+        ctx.fillRect(x + 1, y, 8, 10);
+        ctx.fillRect(x, y + 1, 10, 8);
+        if (lit) {
+            ctx.fillStyle = 'rgba(255,255,255,0.65)';
+            ctx.fillRect(x + 2, y + 2, 2, 1);
+        }
+        drawText(LETTERS[i], x + 3, y + 2, lit ? '#241b45' : '#4a3f7a', 1);
+    }
+
+    function drawTitle() {
+        const float = Math.sin(frame * 0.05) * 3;
+
+        drawKo('보글보글', 14, '#ffe14d', W / 2, 34 + float);
+        drawTextCenter('BUBBLE RACCOON', W / 2, 74 + float, '#ff2e88', 1);
+
+        // 마스코트 줄 세우기
+        blit(SPR.raccoon, W / 2 - 42, 96 + float, false);
+        blit(SPR.bubble, W / 2 - 8, 94 + float, false);
+        blit(SPR.enemy[0], W / 2 + 26, 96 + float, true);
+
+        blit(SPR.enemy[1], 44, 128 + Math.sin(frame * 0.06) * 3, false);
+        blit(SPR.enemy[2], W - 60, 128 + Math.sin(frame * 0.06 + 2) * 3, true);
+        blit(SPR.fruit[4], 70, 132, false);
+        blit(SPR.fruit[5], W - 82, 132, false);
+
+        drawKo('버블에 가두고 터뜨리자!', 10, '#ff9ed2', W / 2, 150);
+
+        for (let i = 0; i < LETTERS.length; i++) {
+            drawChip(W / 2 - 36 + i * 12, 172, i, true);
+        }
+
+        drawTextCenter('COLLECT EXTEND FOR 1UP', W / 2, 188, '#8fe3ff', 1);
+
+        if (best > 0) drawTextCenter('BEST ' + best, W / 2, 202, '#5bdc4a', 1);
+
+        if (Math.floor(frame / 25) % 2 === 0) {
+            drawTextCenter('PUSH ENTER', W / 2, 220, '#ffffff', 1);
+        }
+    }
+
+    /* ------------------------- 루프 ------------------------- */
+    initSprites();
+    loadLevel(0);
+    state = 'title';
+
+    function loop() {
+        update();
+        draw();
+        for (const k in pressed) delete pressed[k];
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+})();
+</script>
+
+</body>
+</html>
