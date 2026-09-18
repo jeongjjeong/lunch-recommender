@@ -348,6 +348,53 @@
         '........'
     ];
 
+    // 보글이(여자 너구리)는 같은 도트에 분홍 팔레트 + 머리의 꽃
+    const GIRL_PAL = {
+        k: OUT, g: '#f2d5e8', d: '#c79ac0', m: '#3b2b50',
+        w: '#fff6dd', e: '#ffffff', p: '#241b45', n: '#ff5fa2', c: '#ff9ec9',
+        i: '#ff9ec9'
+    };
+
+    const FLOWER_ROWS = [
+        '.p.p.',
+        'ppppp',
+        'ppypp',
+        'ppppp',
+        '.p.p.'
+    ];
+
+    // 버블 마왕 (24x24). 좌우 대칭이라 왼쪽 절반만 적고 거울로 펼친다
+    const BOSS_HALF = [
+        '............',
+        '...k........',
+        '..khk.......',
+        '..khhk......',
+        '..khhkkkkkkk',
+        '.khhhbbbbbbb',
+        '.kbbbbbbbbbb',
+        'kbbbbbbbbbbb',
+        'kbbyyybbbbbb',
+        'kbbypybbbbbb',
+        'kbbyyybbbbbb',
+        'kbbbbbbbbbbb',
+        'kbbbbmmmmmmm',
+        'kbbbbmfmmfmm',
+        'kbbbbmmmmmmm',
+        '.kbbbbbbbbbb',
+        '.kbbbbbbbbbb',
+        '..kbbbbbbbbb',
+        '..kbbbbbbbbb',
+        '...kbbbbbbbb',
+        '...kkbbbbbbb',
+        '....kkbbbbbb',
+        '.....kkkkkkk',
+        '............'
+    ];
+
+    const BOSS_ROWS = BOSS_HALF.map(function (h) {
+        return h + h.split('').reverse().join('');
+    });
+
     const SPR = {};
 
     function initSprites() {
@@ -371,6 +418,12 @@
             k: '#0a0518', h: '#7fa0ff', b: '#2b3fae', d: '#a9c8ff', s: '#182270'
         });
         SPR.heart = bake(HEART_ROWS, { a: '#ff4f88' });
+        SPR.girl = bake(RACCOON_ROWS, GIRL_PAL);
+        SPR.flower = bake(FLOWER_ROWS, { p: '#ff5fa2', y: '#ffe14d' });
+        SPR.boss = bake(BOSS_ROWS, {
+            k: OUT, h: '#d9b3ff', b: '#7b34c9', y: '#ffe14d',
+            p: '#180f2e', m: '#2a0f4a', f: '#ffffff'
+        });
 
         SPR.fruit = FRUITS.map(function (f) {
             if (f.shape === 'candy') return bake(CANDY_ROWS, { k: OUT, A: f.color, h: '#ffffff', c: f.sub });
@@ -494,6 +547,12 @@
         return koCache[key];
     }
 
+    function drawKoAt(text, size, color, x, y) {
+        if (!text) return;
+        const t = koText(text, size, color);
+        ctx.drawImage(t.cv, Math.round(x), Math.round(y), t.w * 2, t.h * 2);
+    }
+
     function drawKo(text, size, color, cx, y) {
         const t = koText(text, size, color);
         ctx.drawImage(t.cv, Math.round(cx - t.w), Math.round(y), t.w * 2, t.h * 2);
@@ -501,7 +560,7 @@
 
     /* ------------------------- 데이터 ------------------------- */
     const LEVELS = [
-        [
+        [   // 1. 첫걸음
             '####################',
             '#..................#',
             '#..................#',
@@ -518,7 +577,7 @@
             '#.P..............E.#',
             '####################'
         ],
-        [
+        [   // 2. 나란한 선반
             '####################',
             '#..................#',
             '#...E..........E...#',
@@ -535,7 +594,7 @@
             '#.P................#',
             '####################'
         ],
-        [
+        [   // 3. 엇갈린 발판
             '####################',
             '#..................#',
             '#..E..........E....#',
@@ -552,7 +611,7 @@
             '#.P................#',
             '####################'
         ],
-        [
+        [   // 4. 양쪽 탑
             '####################',
             '#.E..............E.#',
             '#.####..####..####.#',
@@ -566,7 +625,109 @@
             '#..................#',
             '#.####......####...#',
             '#..................#',
-            '#.P..............E.#',
+            '#.P................#',
+            '####################'
+        ],
+        [   // 5. 계단
+            '####################',
+            '#..................#',
+            '#.E..............E.#',
+            '#.###...........####',
+            '#..................#',
+            '#....###......###..#',
+            '#....E....E........#',
+            '#.######......####.#',
+            '#..................#',
+            '#...###....###.....#',
+            '#.....E......E.....#',
+            '#.####......####...#',
+            '#..................#',
+            '#.P................#',
+            '####################'
+        ],
+        [   // 6. 이중 천장
+            '####################',
+            '#..................#',
+            '#..E....E....E.....#',
+            '#.####..####..####.#',
+            '#..................#',
+            '#......######......#',
+            '#..E............E..#',
+            '#.###..........###.#',
+            '#..................#',
+            '#......######......#',
+            '#........E.........#',
+            '#.####........####.#',
+            '#..................#',
+            '#.P................#',
+            '####################'
+        ],
+        [   // 7. 좁은 통로
+            '####################',
+            '#.E..............E.#',
+            '#.####........####.#',
+            '#........E.........#',
+            '#....##########....#',
+            '#..E............E..#',
+            '#.##............##.#',
+            '#......######......#',
+            '#..................#',
+            '#.####..E...####...#',
+            '#..................#',
+            '#......######......#',
+            '#........E.........#',
+            '#.P................#',
+            '####################'
+        ],
+        [   // 8. 사다리꼴
+            '####################',
+            '#..E..........E....#',
+            '#.###..........###.#',
+            '#.....E....E.......#',
+            '#...####....####...#',
+            '#..................#',
+            '#.##..######..##...#',
+            '#.......E..........#',
+            '#....##########....#',
+            '#..................#',
+            '#.###..E...E..###..#',
+            '#..................#',
+            '#......####........#',
+            '#.P................#',
+            '####################'
+        ],
+        [   // 9. 십자 요새
+            '####################',
+            '#.E..............E.#',
+            '#.####..####..####.#',
+            '#..................#',
+            '#....E........E....#',
+            '#..######..######..#',
+            '#..................#',
+            '#.##..........##...#',
+            '#......E..E........#',
+            '#...##########.....#',
+            '#..................#',
+            '#.####......####...#',
+            '#........E.........#',
+            '#.P................#',
+            '####################'
+        ],
+        [   // 10. 마왕의 성
+            '####################',
+            '#.E....E....E....E.#',
+            '#.###..###..###..###',
+            '#..................#',
+            '#....##########....#',
+            '#..E............E..#',
+            '#.##..........##...#',
+            '#......######......#',
+            '#..................#',
+            '#.####..E..E..####.#',
+            '#..................#',
+            '#....##########....#',
+            '#..................#',
+            '#.P................#',
             '####################'
         ]
     ];
@@ -580,6 +741,21 @@
         { color: '#5ce1e6', sub: '#ffffff', shape: 'gem', score: 2000 }
     ];
 
+    // 오프닝 컷신: 6장면 x 300프레임 = 약 30초
+    const STORY = [
+        { d: 300, a: '평화로운 숲속에', b: '너구리 둘이 살았다', draw: sceneMeet },
+        { d: 300, a: '어느 날 하늘이', b: '어두워지더니', draw: sceneVillain },
+        { d: 300, a: '마왕이 보글이를', b: '버블에 가둬 갔다', draw: sceneKidnap },
+        { d: 300, a: '홀로 남은 너구리는', b: '눈물을 삼켰다', draw: sceneAlone },
+        { d: 300, a: '그리고 버블을', b: '되받아치기로 했다', draw: sceneTrain },
+        { d: 300, a: '10개의 성을 넘어', b: '보글이를 구하러!', draw: sceneGo }
+    ];
+
+    const ENDING = [
+        { d: 260, a: '마왕은 버블에', b: '휩쓸려 달아났다', draw: sceneRescue },
+        { d: 300, a: '둘은 다시 만났다', b: '고마워, 너구리!', draw: sceneReunion }
+    ];
+
     const LETTERS = ['E', 'X', 'T', 'E', 'N', 'D'];
     const LETTER_COLORS = ['#ff4f6d', '#ff9f1c', '#ffe14d', '#5bdc4a', '#4fc9ff', '#c86bff'];
 
@@ -589,6 +765,7 @@
     let levelIndex = 0;
     let score = 0, best = 0, lives = 3;
     let timer = 0, frame = 0;
+    let storyIndex = 0, storyTimer = 0;
     let extend = [false, false, false, false, false, false];
 
     let player = null;
@@ -686,8 +863,7 @@
 
     /* ------------------------- 레벨 ------------------------- */
     function loadLevel(i) {
-        const map = LEVELS[i % LEVELS.length];
-        const loop = Math.floor(i / LEVELS.length);
+        const map = LEVELS[i];
         grid = map.map(function (row) { return row.split(''); });
 
         enemies = []; bubbles = []; fruits = []; letters = []; particles = [];
@@ -699,7 +875,7 @@
                 const ch = grid[r][c];
                 if (ch === 'P') { start = { x: c * TS, y: r * TS }; grid[r][c] = '.'; }
                 else if (ch === 'E') {
-                    enemies.push(makeEnemy(c * TS + 2, r * TS + 2, loop, n++));
+                    enemies.push(makeEnemy(c * TS + 2, r * TS + 2, i, n++));
                     grid[r][c] = '.';
                 }
             }
@@ -712,8 +888,8 @@
         };
     }
 
-    function makeEnemy(x, y, loop, n) {
-        const speed = 0.55 + loop * 0.15;
+    function makeEnemy(x, y, stage, n) {
+        const speed = 0.5 + stage * 0.055;
         return {
             x: x, y: y, w: 12, h: 12,
             vx: (n % 2 === 0 ? -1 : 1) * speed,
@@ -785,6 +961,19 @@
             return;
         }
 
+        // 오프닝 / 엔딩 컷신은 아무 키나 누르면 건너뛴다
+        if (state === 'story' || state === 'ending') {
+            const list = state === 'story' ? STORY : ENDING;
+            storyTimer++;
+            if (pressed.start || pressed.jump || pressed.shoot) { finishStory(); return; }
+            if (storyTimer >= list[storyIndex].d) {
+                storyIndex++;
+                storyTimer = 0;
+                if (storyIndex >= list.length) finishStory();
+            }
+            return;
+        }
+
         if (state === 'gameover' || state === 'allclear') {
             timer++;
             updateParticles();
@@ -802,8 +991,9 @@
             updateLetters();
             if (timer <= 0) {
                 levelIndex++;
-                if (levelIndex >= LEVELS.length * 3) {
-                    state = 'allclear'; timer = 0;
+                if (levelIndex >= LEVELS.length) {
+                    state = 'ending';
+                    storyIndex = 0; storyTimer = 0;
                     if (score > best) best = score;
                 } else {
                     loadLevel(levelIndex);
@@ -848,8 +1038,18 @@
         score = 0; lives = 3; levelIndex = 0;
         extend = [false, false, false, false, false, false];
         loadLevel(0);
-        state = 'playing';
+        storyIndex = 0; storyTimer = 0;
+        state = 'story';
         jingle([523, 659, 784]);
+    }
+
+    function finishStory() {
+        if (state === 'story') {
+            state = 'playing';
+        } else {
+            state = 'allclear';
+            timer = 0;
+        }
     }
 
     function updatePlayer() {
@@ -1145,6 +1345,7 @@
             }
         }
 
+        if (state === 'story' || state === 'ending') { drawStory(); return; }
         if (state === 'title') { drawTitle(); return; }
 
         drawLevel();
@@ -1278,11 +1479,11 @@
         ctx.fillRect(0, TS - 1, W, 1);
 
         drawText('SCORE ' + score, 4, 4, '#ffe14d', 1);
-        drawText('ST ' + (levelIndex + 1), 118, 4, '#8fe3ff', 1);
+        drawText('ST ' + (levelIndex + 1) + '/' + LEVELS.length, 106, 4, '#8fe3ff', 1);
 
         // EXTEND 수집 현황 (알록달록 동그란 칩)
         for (let i = 0; i < LETTERS.length; i++) {
-            drawChip(158 + i * 12, 3, i, extend[i]);
+            drawChip(160 + i * 12, 3, i, extend[i]);
         }
 
         for (let i = 0; i < Math.min(lives, 5); i++) {
@@ -1300,6 +1501,193 @@
             ctx.fillRect(x + 2, y + 2, 2, 1);
         }
         drawText(LETTERS[i], x + 3, y + 2, lit ? '#241b45' : '#4a3f7a', 1);
+    }
+
+    /* ------------------------- 컷신 ------------------------- */
+    function drawStory() {
+        const list = state === 'story' ? STORY : ENDING;
+        const sc = list[Math.min(storyIndex, list.length - 1)];
+        sc.draw(storyTimer / sc.d);
+        storyPanel(sc.a, sc.b, storyTimer / sc.d);
+
+        if (Math.floor(frame / 30) % 2 === 0) {
+            drawText('PUSH KEY TO SKIP', W - 99, 4, '#6a5aa8', 1);
+        }
+    }
+
+    // 대사는 완성된 줄의 위치를 먼저 잡고 왼쪽부터 타자기처럼 채운다
+    function storyPanel(a, b, t) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(0, 168, W, H - 168);
+        ctx.fillStyle = '#ff2e88';
+        ctx.fillRect(0, 168, W, 1);
+
+        const shown = Math.ceil((a.length + b.length) * Math.min(1, t * 2.6));
+        const la = koText(a, 11, '#fff6dd'), lb = koText(b, 11, '#ffd9f0');
+        drawKoAt(a.slice(0, Math.min(a.length, shown)), 11, '#fff6dd', W / 2 - la.w, 170);
+        if (shown > a.length) {
+            drawKoAt(b.slice(0, shown - a.length), 11, '#ffd9f0', W / 2 - lb.w, 202);
+        }
+    }
+
+    function storySky(dark) {
+        ctx.fillStyle = '#0d0722';
+        ctx.fillRect(0, 0, W, H);
+        for (const st of stars) {
+            const t = (frame + st.p) % 120;
+            if (t < 60) {
+                ctx.fillStyle = t < 30 ? '#3a2a6a' : '#7a5fc0';
+                ctx.fillRect(st.x, st.y % 134, 1, 1);
+            }
+        }
+        if (dark > 0) {
+            ctx.fillStyle = 'rgba(58, 0, 84, ' + (dark * 0.6) + ')';
+            ctx.fillRect(0, 0, W, H);
+        }
+    }
+
+    function storyGround() {
+        for (let c = 0; c < COLS; c++) blit(SPR.tile, c * TS, 136, false);
+    }
+
+    function storyGirl(x, y, flip) {
+        blit(SPR.girl, x, y, flip);
+        blit(SPR.flower, flip ? x + 1 : x + 10, y - 2, flip);
+    }
+
+    function sparkle(x, y, color) {
+        ctx.fillStyle = color;
+        const r = 3 + Math.sin(frame * 0.3) * 2;
+        ctx.fillRect(x, y - r, 1, 2);
+        ctx.fillRect(x, y + r, 1, 2);
+        ctx.fillRect(x - r, y, 2, 1);
+        ctx.fillRect(x + r, y, 2, 1);
+    }
+
+    function sceneMeet() {
+        storySky(0);
+        storyGround();
+        const bob = Math.sin(frame * 0.08) * 2;
+        blit(SPR.raccoon, 124, 120 + bob, false);
+        storyGirl(154, 120 - bob, true);
+        for (let i = 0; i < 3; i++) {
+            const p = ((frame + i * 45) % 135) / 135;
+            ctx.globalAlpha = 1 - p;
+            blit(SPR.heart, 144 + Math.sin(p * 6.3 + i * 2) * 5, 114 - p * 46, false);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function sceneVillain(t) {
+        storySky(t);
+        storyGround();
+        blit(SPR.raccoon, 124, 120, false);
+        storyGirl(154, 120, true);
+        blit(SPR.boss, W / 2 - 12, -32 + Math.min(1, t * 1.8) * 84, false);
+        if (t > 0.3 && Math.floor(frame / 8) % 2 === 0) {
+            drawText('!', 130, 106, '#ffe14d', 1);
+            drawText('!', 160, 106, '#ff5fa2', 1);
+        }
+    }
+
+    function sceneKidnap(t) {
+        storySky(0.65);
+        storyGround();
+        blit(SPR.raccoon, 64, 120, false);
+        const gx = 150 + t * 46, gy = 88 - t * 46;
+        blit(SPR.boss, gx + 28, gy - 34, false);
+        storyGirl(gx, gy, false);
+        blit(SPR.bubble, gx - 1, gy - 1, false);
+        if (Math.floor(frame / 10) % 2 === 0) drawText('!', 70, 106, '#ffe14d', 1);
+    }
+
+    function sceneAlone() {
+        storySky(0.4);
+        storyGround();
+        blit(SPR.raccoon, W / 2 - 8, 120, false);
+        for (let i = 0; i < 2; i++) {
+            const p = ((frame + i * 30) % 60) / 60;
+            ctx.fillStyle = '#8fe3ff';
+            ctx.fillRect(W / 2 - 4 + i * 9, 128 + p * 9, 1, 2);
+        }
+        const gap = 2 + Math.sin(frame * 0.05) * 2;
+        ctx.globalAlpha = 0.85;
+        blit(SPR.heart, W / 2 - 14 - gap, 96, false);
+        blit(SPR.heart, W / 2 + 6 + gap, 96, true);
+        ctx.globalAlpha = 1;
+    }
+
+    function sceneTrain() {
+        storySky(0.15);
+        storyGround();
+        blit(SPR.raccoon, 72, 120, false);
+        for (let i = 0; i < 3; i++) {
+            const p = ((frame * 1.8 + i * 50) % 150) / 150;
+            blit(SPR.bubble, 88 + p * 150, 114 - Math.sin(p * 3.14) * 12, false);
+        }
+        sparkle(70, 108, '#ffe14d');
+    }
+
+    function sceneGo(t) {
+        storySky(0.2);
+        storyGround();
+        drawCastle(232, 72);
+        const x = 20 + t * 150;
+        const hop = Math.abs(Math.sin(frame * 0.22)) * 5;
+        blit(SPR.raccoon, x, 120 - hop, false);
+        ctx.fillStyle = '#4a3f7a';
+        for (let i = 0; i < 3; i++) ctx.fillRect(x - 5 - i * 5, 134, 2, 1);
+    }
+
+    function drawCastle(x, y) {
+        ctx.fillStyle = '#2a1a4d';
+        ctx.fillRect(x, y + 18, 62, 46);
+        ctx.fillRect(x + 4, y, 14, 24);
+        ctx.fillRect(x + 44, y, 14, 24);
+        ctx.fillStyle = '#1a0f33';
+        ctx.fillRect(x + 25, y + 42, 12, 22);
+        if (Math.floor(frame / 30) % 2 === 0) {
+            ctx.fillStyle = '#ffe14d';
+            ctx.fillRect(x + 8, y + 8, 5, 5);
+            ctx.fillRect(x + 48, y + 8, 5, 5);
+        }
+    }
+
+    function sceneRescue(t) {
+        storySky(0.45 * (1 - t));
+        storyGround();
+        blit(SPR.raccoon, 72, 120, false);
+        if (t < 0.55) {
+            if (Math.floor(frame / 4) % 2 === 0) {
+                blit(SPR.boss, 176 + Math.sin(frame * 0.9) * 2, 92, false);
+            }
+            for (let i = 0; i < 4; i++) {
+                const p = ((frame * 2.2 + i * 38) % 150) / 150;
+                blit(SPR.bubble, 88 + p * 84, 112 - Math.sin(p * 3.14) * 10, false);
+            }
+        } else {
+            const k = (t - 0.55) / 0.45;
+            for (let i = 0; i < 12; i++) {
+                const a = (Math.PI * 2 * i) / 12;
+                ctx.fillStyle = i % 2 ? '#c86bff' : '#ffe14d';
+                ctx.fillRect(186 + Math.cos(a) * k * 44, 106 + Math.sin(a) * k * 44, 2, 2);
+            }
+            storyGirl(178, 120, true);
+        }
+    }
+
+    function sceneReunion() {
+        storySky(0);
+        storyGround();
+        const bob = Math.sin(frame * 0.08) * 2;
+        blit(SPR.raccoon, 138, 120 + bob, false);
+        storyGirl(166, 120 - bob, true);
+        for (let i = 0; i < 5; i++) {
+            const p = ((frame * 1.2 + i * 30) % 150) / 150;
+            ctx.globalAlpha = 1 - p;
+            blit(SPR.heart, 126 + i * 13 + Math.sin(p * 6.3 + i) * 4, 114 - p * 66, false);
+            ctx.globalAlpha = 1;
+        }
     }
 
     function drawTitle() {
