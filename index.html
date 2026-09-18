@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>보글보글 너구리</title>
-<meta name="theme-color" content="#120a1e">
+<meta name="theme-color" content="#08040f">
 <meta name="description" content="너구리가 납치된 보글이를 구하러 10개의 성을 넘는 픽셀아트 아케이드 게임">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -16,132 +16,79 @@
 <style>
     * { box-sizing: border-box; }
 
+    html, body { height: 100%; }
+
     body {
         font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        margin: 0;
+        background: #08040f;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        min-height: 100vh;
-        margin: 0;
-        padding: 16px;
-        background: #120a1e;
-        color: #ffd9f0;
-        text-align: center;
+        overflow: hidden;
         user-select: none;
         -webkit-user-select: none;
-        overscroll-behavior: none;
         -webkit-tap-highlight-color: transparent;
+        overscroll-behavior: none;
     }
 
-    h1 {
-        margin: 0 0 4px;
-        font-size: 1.7em;
-        color: #ffe14d;
-        text-shadow: 3px 3px 0 #ff2e88;
-        letter-spacing: 3px;
-    }
-
-    .description {
-        margin: 0 0 14px;
-        font-size: 0.85em;
-        color: #ff9ed2;
-        letter-spacing: 1px;
-    }
-
-    #frame {
-        padding: 10px;
-        background: #000;
-        border: 4px solid #ff2e88;
-        border-radius: 14px;
-        box-shadow: 0 0 0 3px #12060f, 0 12px 34px rgba(255, 46, 136, 0.28);
-        width: min(660px, 100%);
+    /* 1080x1920 과 같은 9:16 비율. 화면을 꽉 채운다 */
+    #stage {
+        position: relative;
+        width: min(100vw, calc(100dvh * 9 / 16));
+        max-height: 100dvh;
+        aspect-ratio: 9 / 16;
     }
 
     canvas {
-        touch-action: none;
-        width: 100%;
-        height: auto;
         display: block;
+        width: 100%;
+        height: 100%;
         background: #000;
         image-rendering: pixelated;
         image-rendering: crisp-edges;
+        touch-action: none;
     }
 
-    .keys {
-        margin-top: 14px;
-        font-size: 0.85em;
-        color: #c9a7e8;
-        line-height: 1.9;
-    }
-
-    kbd {
-        background: #2a1140;
-        border: 2px solid #ff2e88;
-        border-radius: 4px;
-        padding: 1px 7px;
-        font-family: inherit;
-        font-size: 0.9em;
-        color: #ffe14d;
-    }
-
-    #touchpad {
-        display: none;
-        margin-top: 14px;
-        width: min(660px, 100%);
-        justify-content: space-between;
-        gap: 10px;
-    }
-
-    #touchpad .group { display: flex; gap: 10px; }
+    /* 버튼 그림은 캔버스에 도트로 그리고, 여기 버튼들은 투명한 터치 영역이다 */
+    #touchpad, #gamepad { position: absolute; inset: 0; pointer-events: none; }
 
     #touchpad button {
+        position: absolute;
+        pointer-events: auto;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: transparent;
+        font-size: 0;
         touch-action: none;
-        width: 74px;
-        height: 74px;
-        border-radius: 12px;
-        border: 3px solid #ff2e88;
-        background: #2a1140;
-        color: #ffe14d;
-        font-size: 1.4em;
-        font-family: inherit;
-        font-weight: bold;
+        cursor: pointer;
     }
 
-    #touchpad button:active { background: #ff2e88; color: #fff; }
+    #touchpad button:focus-visible { outline: 2px solid #ffe14d; }
 
-    @media (hover: none) and (pointer: coarse) {
-        #touchpad { display: flex; }
-        .keys { display: none; }
-    }
+    #btnLeft  { left: 2.08%;  top: 77.34%; width: 22.22%; height: 12.5%; }
+    #btnRight { left: 26.39%; top: 77.34%; width: 22.22%; height: 12.5%; }
+    #btnShoot { left: 50.69%; top: 77.34%; width: 22.22%; height: 12.5%; }
+    #btnJump  { left: 75%;    top: 77.34%; width: 22.22%; height: 12.5%; }
+    #btnMute  { left: 86.8%;  top: 66.8%;  width: 9.7%;   height: 5.5%; }
 </style>
 </head>
 <body>
 
-<h1>보글보글</h1>
-<p class="description">너구리 버블 · BUBBLE RACCOON</p>
-
-<div id="frame">
-    <canvas id="game" width="320" height="240"></canvas>
-</div>
-
-<div id="touchpad">
-    <div class="group">
-        <button id="btnLeft" aria-label="왼쪽">◀</button>
-        <button id="btnRight" aria-label="오른쪽">▶</button>
-    </div>
-    <div class="group">
-        <button id="btnShoot" aria-label="버블">◯</button>
-        <button id="btnJump" aria-label="점프">▲</button>
+<div id="stage">
+    <canvas id="game" width="288" height="512"></canvas>
+    <div id="touchpad">
+        <div id="gamepad">
+            <button id="btnLeft" aria-label="왼쪽으로 이동">왼쪽</button>
+            <button id="btnRight" aria-label="오른쪽으로 이동">오른쪽</button>
+            <button id="btnShoot" aria-label="버블 발사">버블</button>
+            <button id="btnJump" aria-label="점프">점프</button>
+        </div>
+        <button id="btnMute" aria-label="음악 켜기 끄기">음악</button>
     </div>
 </div>
-
-<p class="keys">
-    <kbd>←</kbd> <kbd>→</kbd> 이동 &nbsp;·&nbsp;
-    <kbd>Space</kbd> / <kbd>↑</kbd> 점프 &nbsp;·&nbsp;
-    <kbd>Z</kbd> / <kbd>X</kbd> 버블 &nbsp;·&nbsp;
-    <kbd>Enter</kbd> 시작
-</p>
 
 <script>
 (function () {
@@ -151,8 +98,10 @@
        해상도 320x240 저해상도 캔버스를 CSS 로 2배 확대해서
        도트가 또렷하게 보이도록 한다 (고전 아케이드 느낌)
     ============================================================= */
-    const W = 320, H = 240, TS = 16;
-    const COLS = W / TS, ROWS = H / TS;
+    const W = 288, H = 512, TS = 16;     // 9:16 (x3.75 하면 1080x1920)
+    const COLS = 18, ROWS = 21;          // 레벨 격자
+    const PLAY_H = ROWS * TS;            // 336 : 놀이터 높이
+    const PANEL_Y = PLAY_H;              // 336 : 아래쪽 조작판 시작
 
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -570,174 +519,234 @@
     /* ------------------------- 데이터 ------------------------- */
     const LEVELS = [
         [   // 1. 첫걸음
-            '####################',
-            '#..................#',
-            '#..................#',
-            '#...E.........E....#',
-            '#..####.....####...#',
-            '#..................#',
-            '#..................#',
-            '#.####..####..####.#',
-            '#..................#',
-            '#..................#',
-            '#....##########....#',
-            '#..................#',
-            '#..................#',
-            '#.P..............E.#',
-            '####################'
+            '##################',
+            '#................#',
+            '#................#',
+            '#...E........E...#',
+            '#..####....####..#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#....########....#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#..####....####..#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#....########....#',
+            '#................#',
+            '#................#',
+            '#.P...........E..#',
+            '##################'
         ],
         [   // 2. 나란한 선반
-            '####################',
-            '#..................#',
-            '#...E..........E...#',
-            '#.#####....#####...#',
-            '#..................#',
-            '#..................#',
-            '#......######......#',
-            '#..................#',
-            '#.###..........###.#',
-            '#.....E....E.......#',
-            '#..................#',
-            '#...####....####...#',
-            '#..................#',
-            '#.P................#',
-            '####################'
+            '##################',
+            '#................#',
+            '#................#',
+            '#..E..........E..#',
+            '#.#####....#####.#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#..###......###..#',
+            '#................#',
+            '#....E....E......#',
+            '#................#',
+            '#.#####....#####.#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#...##########...#',
+            '#................#',
+            '#................#',
+            '#.P..............#',
+            '##################'
         ],
         [   // 3. 엇갈린 발판
-            '####################',
-            '#..................#',
-            '#..E..........E....#',
-            '#.###..####..###...#',
-            '#..................#',
-            '#....##....##......#',
-            '#..........E.......#',
-            '#.##..######..##...#',
-            '#..................#',
-            '#......E...E.......#',
-            '#..####......####..#',
-            '#..................#',
-            '#..................#',
-            '#.P................#',
-            '####################'
+            '##################',
+            '#................#',
+            '#................#',
+            '#..E..........E..#',
+            '#.####......####.#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#.....######.....#',
+            '#........E.......#',
+            '#................#',
+            '#................#',
+            '#.###........###.#',
+            '#....E....E......#',
+            '#................#',
+            '#................#',
+            '#..####....####..#',
+            '#................#',
+            '#................#',
+            '#.P..............#',
+            '##################'
         ],
         [   // 4. 양쪽 탑
-            '####################',
-            '#.E..............E.#',
-            '#.####..####..####.#',
-            '#..................#',
-            '#....E........E....#',
-            '#..######..######..#',
-            '#..................#',
-            '#.##..........##...#',
-            '#......E..E........#',
-            '#...##########.....#',
-            '#..................#',
-            '#.####......####...#',
-            '#..................#',
-            '#.P................#',
-            '####################'
+            '##################',
+            '#.E............E.#',
+            '#.####......####.#',
+            '#................#',
+            '#................#',
+            '#...E......E.....#',
+            '#..######..###...#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#.###..........###',
+            '#....E......E....#',
+            '#................#',
+            '#................#',
+            '#....########....#',
+            '#................#',
+            '#................#',
+            '#..####....####..#',
+            '#................#',
+            '#.P..............#',
+            '##################'
         ],
         [   // 5. 계단
-            '####################',
-            '#..................#',
-            '#.E..............E.#',
-            '#.###...........####',
-            '#..................#',
-            '#....###......###..#',
-            '#....E....E........#',
-            '#.######......####.#',
-            '#..................#',
-            '#...###....###.....#',
-            '#.....E......E.....#',
-            '#.####......####...#',
-            '#..................#',
-            '#.P................#',
-            '####################'
+            '##################',
+            '#................#',
+            '#..E..........E..#',
+            '#.####......####.#',
+            '#................#',
+            '#................#',
+            '#.....E....E.....#',
+            '#...######..####.#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#.####......####.#',
+            '#....E......E....#',
+            '#................#',
+            '#................#',
+            '#...##########...#',
+            '#................#',
+            '#................#',
+            '#.P..............#',
+            '#................#',
+            '##################'
         ],
         [   // 6. 이중 천장
-            '####################',
-            '#..................#',
-            '#..E....E....E.....#',
-            '#.####..####..####.#',
-            '#..................#',
-            '#......######......#',
-            '#..E............E..#',
-            '#.###..........###.#',
-            '#..................#',
-            '#......######......#',
-            '#........E.........#',
-            '#.####........####.#',
-            '#..................#',
-            '#.P................#',
-            '####################'
+            '##################',
+            '#................#',
+            '#..E....E....E...#',
+            '#.###..####..###.#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#....########....#',
+            '#..E..........E..#',
+            '#.##..........##.#',
+            '#................#',
+            '#................#',
+            '#....########....#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#..####....####..#',
+            '#.......E........#',
+            '#................#',
+            '#.P..............#',
+            '##################'
         ],
         [   // 7. 좁은 통로
-            '####################',
-            '#.E..............E.#',
-            '#.####........####.#',
-            '#........E.........#',
-            '#....##########....#',
-            '#..E............E..#',
-            '#.##............##.#',
-            '#......######......#',
-            '#..................#',
-            '#.####..E...####...#',
-            '#..................#',
-            '#......######......#',
-            '#........E.........#',
-            '#.P................#',
-            '####################'
+            '##################',
+            '#.E............E.#',
+            '#.####......####.#',
+            '#................#',
+            '#................#',
+            '#....########....#',
+            '#..E..........E..#',
+            '#.##..........##.#',
+            '#................#',
+            '#......E.........#',
+            '#....########....#',
+            '#................#',
+            '#................#',
+            '#..###......###..#',
+            '#....E....E......#',
+            '#................#',
+            '#................#',
+            '#...##########...#',
+            '#................#',
+            '#.P..............#',
+            '##################'
         ],
         [   // 8. 사다리꼴
-            '####################',
-            '#..E..........E....#',
-            '#.###..........###.#',
-            '#.....E....E.......#',
-            '#...####....####...#',
-            '#..................#',
-            '#.##..######..##...#',
-            '#.......E..........#',
-            '#....##########....#',
-            '#..................#',
-            '#.###..E...E..###..#',
-            '#..................#',
-            '#......####........#',
-            '#.P................#',
-            '####################'
+            '##################',
+            '#..E........E....#',
+            '#.###........###.#',
+            '#................#',
+            '#....E....E......#',
+            '#..######..####..#',
+            '#................#',
+            '#................#',
+            '#................#',
+            '#.....######.....#',
+            '#........E.......#',
+            '#................#',
+            '#................#',
+            '#.####......####.#',
+            '#...E........E...#',
+            '#................#',
+            '#................#',
+            '#....########....#',
+            '#................#',
+            '#.P..............#',
+            '##################'
         ],
         [   // 9. 십자 요새
-            '####################',
-            '#.E..............E.#',
-            '#.####..####..####.#',
-            '#..................#',
-            '#....E........E....#',
-            '#..######..######..#',
-            '#..................#',
-            '#.##..........##...#',
-            '#......E..E........#',
-            '#...##########.....#',
-            '#..................#',
-            '#.####......####...#',
-            '#........E.........#',
-            '#.P................#',
-            '####################'
+            '##################',
+            '#.E............E.#',
+            '#.####......####.#',
+            '#................#',
+            '#................#',
+            '#...E......E.....#',
+            '#.######..######.#',
+            '#................#',
+            '#................#',
+            '#.##..........##.#',
+            '#....E....E......#',
+            '#................#',
+            '#................#',
+            '#...##########...#',
+            '#................#',
+            '#................#',
+            '#..####....####..#',
+            '#.......E........#',
+            '#................#',
+            '#.P..............#',
+            '##################'
         ],
         [   // 10. 마왕의 성
-            '####################',
-            '#.E....E....E....E.#',
-            '#.###..###..###..###',
-            '#..................#',
-            '#....##########....#',
-            '#..E............E..#',
-            '#.##..........##...#',
-            '#......######......#',
-            '#..................#',
-            '#.####..E..E..####.#',
-            '#..................#',
-            '#....##########....#',
-            '#..................#',
-            '#.P................#',
-            '####################'
+            '##################',
+            '#.E...E....E...E.#',
+            '#.###.###..###.###',
+            '#................#',
+            '#................#',
+            '#....########....#',
+            '#..E..........E..#',
+            '#.##..........##.#',
+            '#................#',
+            '#................#',
+            '#.####......####.#',
+            '#....E......E....#',
+            '#................#',
+            '#................#',
+            '#....########....#',
+            '#................#',
+            '#................#',
+            '#..####....####..#',
+            '#................#',
+            '#.P..............#',
+            '##################'
         ]
     ];
 
@@ -789,7 +798,8 @@
         ArrowRight: 'right', KeyD: 'right',
         ArrowUp: 'jump', KeyW: 'jump', Space: 'jump',
         KeyZ: 'shoot', KeyX: 'shoot', ShiftLeft: 'shoot', ShiftRight: 'shoot',
-        Enter: 'start', NumpadEnter: 'start'
+        Enter: 'start', NumpadEnter: 'start',
+        KeyM: 'mute'
     };
 
     function setKey(name, down) {
@@ -833,6 +843,17 @@
     bindTouch('btnJump', 'jump');
     bindTouch('btnShoot', 'shoot');
 
+    (function () {
+        const el = document.getElementById('btnMute');
+        let viaTouch = false;
+        el.addEventListener('touchstart', function (e) {
+            e.preventDefault(); viaTouch = true; toggleBGM();
+        }, { passive: false });
+        el.addEventListener('mousedown', function (e) {
+            e.preventDefault(); if (!viaTouch) toggleBGM();
+        });
+    })();
+
     canvas.addEventListener('mousedown', function () { audioOn(); setKey('start', true); });
     canvas.addEventListener('mouseup', function () { setKey('start', false); });
     canvas.addEventListener('touchstart', function (e) {
@@ -846,9 +867,13 @@
     let actx = null;
 
     function audioOn() {
-        if (actx) { if (actx.state === 'suspended') actx.resume(); return; }
+        if (actx) {
+            if (actx.state === 'suspended') actx.resume();
+            startBGM();
+            return;
+        }
         const AC = window.AudioContext || window.webkitAudioContext;
-        if (AC) actx = new AC();
+        if (AC) { actx = new AC(); startBGM(); }
     }
 
     function beep(freq, dur, type, vol) {
@@ -868,6 +893,131 @@
         notes.forEach(function (n, i) {
             setTimeout(function () { beep(n, 0.12, 'square', 0.05); }, i * 90);
         });
+    }
+
+    /* ------------------------- 8비트 배경음악 ------------------------- */
+    const SCALE = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+
+    function hz(name) {
+        if (name === '-') return 0;
+        const m = /^([A-G]#?)(\d)$/.exec(name);
+        const n = SCALE[m[1]] + (parseInt(m[2], 10) + 1) * 12;
+        return 440 * Math.pow(2, (n - 69) / 12);
+    }
+
+    // C - Am - F - G 네 마디를 8분음표 32스텝으로. A 절과 B 절을 번갈아 돈다
+    const THEME = {
+        tempo: 140,
+        leadA: [
+            'C5', 'E5', 'G5', 'E5', 'G5', 'E5', 'C5', '-',
+            'A4', 'C5', 'E5', 'C5', 'E5', 'C5', 'A4', '-',
+            'F4', 'A4', 'C5', 'A4', 'C5', 'A4', 'F4', '-',
+            'G4', 'B4', 'D5', 'B4', 'D5', 'G5', 'B5', '-'
+        ],
+        leadB: [
+            'E5', 'G5', 'C6', '-', 'B5', 'G5', 'E5', '-',
+            'C5', 'E5', 'A5', '-', 'G5', 'E5', 'C5', '-',
+            'A4', 'C5', 'F5', '-', 'E5', 'C5', 'A4', '-',
+            'B4', 'D5', 'G5', 'B5', 'D6', '-', 'B5', 'G5'
+        ],
+        bass: [
+            'C3', '-', 'C3', '-', 'G2', '-', 'C3', '-',
+            'A2', '-', 'A2', '-', 'E2', '-', 'A2', '-',
+            'F2', '-', 'F2', '-', 'C3', '-', 'F2', '-',
+            'G2', '-', 'G2', '-', 'D3', '-', 'G2', 'D3'
+        ],
+        drum: [
+            1, 2, 3, 2, 1, 2, 3, 2,
+            1, 2, 3, 2, 1, 2, 3, 2,
+            1, 2, 3, 2, 1, 2, 3, 2,
+            1, 2, 3, 2, 1, 3, 3, 3
+        ]
+    };
+
+    let bgmOn = true, bgmGain = null, bgmStep = 0, bgmNext = 0, bgmTimer = null, noiseBuf = null;
+
+    function startBGM() {
+        if (!actx || bgmTimer) return;
+        bgmGain = actx.createGain();
+        bgmGain.gain.value = 0.16;
+        bgmGain.connect(actx.destination);
+        bgmNext = actx.currentTime + 0.12;
+        bgmTimer = setInterval(bgmTick, 25);
+    }
+
+    function bgmTick() {
+        if (!actx || actx.state !== 'running') return;
+        const stepDur = 60 / THEME.tempo / 2;
+        while (bgmNext < actx.currentTime + 0.25) {
+            if (bgmOn) playStep(bgmStep % 64, bgmNext, stepDur);
+            bgmNext += stepDur;
+            bgmStep++;
+        }
+    }
+
+    function playStep(i, at, dur) {
+        const s = i % 32;
+        tone(hz(i < 32 ? THEME.leadA[s] : THEME.leadB[s]), at, dur * 0.85, 'square', 0.1);
+        tone(hz(THEME.bass[s]), at, dur * 1.6, 'triangle', 0.22);
+
+        const d = THEME.drum[s];
+        if (d === 1) kick(at);
+        else if (d === 2) noise(at, 0.03, 0.05);
+        else if (d === 3) noise(at, 0.09, 0.12);
+    }
+
+    function tone(f, at, dur, type, vol) {
+        if (!f || !bgmGain) return;
+        const osc = actx.createOscillator();
+        const g = actx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(f, at);
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(vol, at + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        osc.connect(g).connect(bgmGain);
+        osc.start(at);
+        osc.stop(at + dur + 0.03);
+    }
+
+    function kick(at) {
+        if (!bgmGain) return;
+        const osc = actx.createOscillator();
+        const g = actx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, at);
+        osc.frequency.exponentialRampToValueAtTime(48, at + 0.11);
+        g.gain.setValueAtTime(0.3, at);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + 0.13);
+        osc.connect(g).connect(bgmGain);
+        osc.start(at);
+        osc.stop(at + 0.15);
+    }
+
+    function noise(at, dur, vol) {
+        if (!bgmGain) return;
+        if (!noiseBuf) {
+            noiseBuf = actx.createBuffer(1, actx.sampleRate * 0.4, actx.sampleRate);
+            const d = noiseBuf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        }
+        const src = actx.createBufferSource();
+        src.buffer = noiseBuf;
+        const hp = actx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 5200;
+        const g = actx.createGain();
+        g.gain.setValueAtTime(vol, at);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        src.connect(hp).connect(g).connect(bgmGain);
+        src.start(at);
+        src.stop(at + dur + 0.02);
+    }
+
+    function toggleBGM() {
+        audioOn();
+        bgmOn = !bgmOn;
+        if (bgmOn) startBGM();
     }
 
     /* ------------------------- 레벨 ------------------------- */
@@ -898,7 +1048,7 @@
     }
 
     function makeEnemy(x, y, stage, n) {
-        const speed = 0.5 + stage * 0.055;
+        const speed = 0.6 + stage * 0.06;
         return {
             x: x, y: y, w: 12, h: 12,
             vx: (n % 2 === 0 ? -1 : 1) * speed,
@@ -908,7 +1058,8 @@
     }
 
     /* ------------------------- 물리 ------------------------- */
-    const GRAVITY = 0.28, MAX_FALL = 5.6, JUMP_V = -5.35, RUN_SPEED = 1.55;
+    // 발판 간격은 4칸(64px). 점프 최고점이 85px 라 여유 있게 올라선다
+    const GRAVITY = 0.34, MAX_FALL = 7.5, JUMP_V = -7.6, RUN_SPEED = 1.8;
 
     function solid(c, r) {
         if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return false;
@@ -953,7 +1104,7 @@
             }
         }
         if (e.y < 0) { e.y = 0; if (e.vy < 0) e.vy = 0; }
-        if (e.y > H) e.y = -e.h;
+        if (e.y > PLAY_H) e.y = -e.h;
     }
 
     function overlap(a, b) {
@@ -963,6 +1114,7 @@
     /* ------------------------- 업데이트 ------------------------- */
     function update() {
         frame++;
+        if (pressed.mute) toggleBGM();
 
         if (state === 'title') {
             if (pressed.start || pressed.jump || pressed.shoot) startGame();
@@ -1338,8 +1490,8 @@
 
     /* ------------------------- 그리기 ------------------------- */
     const stars = [];
-    for (let i = 0; i < 40; i++) {
-        stars.push({ x: (Math.random() * W) | 0, y: (Math.random() * H) | 0, p: (Math.random() * 100) | 0 });
+    for (let i = 0; i < 46; i++) {
+        stars.push({ x: (Math.random() * W) | 0, y: (Math.random() * PLAY_H) | 0, p: (Math.random() * 100) | 0 });
     }
 
     function draw() {
@@ -1365,40 +1517,43 @@
         for (const l of letters) drawLetter(l);
         drawParticles();
         drawHUD();
+        drawPanel();
 
+        const mid = PLAY_H / 2;
         if (state === 'cleared') {
             banner();
-            drawTextCenter('STAGE CLEAR!', W / 2, H / 2 - 14, '#5bdc4a', 2);
-            drawKo('잘했어!', 10, '#ffe14d', W / 2, H / 2 + 4);
+            drawTextCenter('STAGE CLEAR!', W / 2, mid - 16, '#5bdc4a', 2);
+            drawKo('잘했어!', 11, '#ffe14d', W / 2, mid + 4);
         }
         if (state === 'dying') {
             banner();
-            drawKo('아야!', 12, '#ff7fae', W / 2, H / 2 - 12);
+            drawKo('아야!', 13, '#ff7fae', W / 2, mid - 14);
         }
         if (state === 'gameover') {
             banner();
-            drawTextCenter('GAME OVER', W / 2, H / 2 - 16, '#ff4f6d', 2);
-            drawTextCenter('SCORE ' + score, W / 2, H / 2 + 6, '#ffe14d', 1);
+            drawTextCenter('GAME OVER', W / 2, mid - 18, '#ff4f6d', 2);
+            drawTextCenter('SCORE ' + score, W / 2, mid + 6, '#ffe14d', 1);
             if (Math.floor(frame / 25) % 2 === 0) {
-                drawTextCenter('PUSH ENTER', W / 2, H / 2 + 20, '#ffffff', 1);
+                drawTextCenter('PUSH ENTER', W / 2, mid + 20, '#ffffff', 1);
             }
         }
         if (state === 'allclear') {
             banner();
-            drawTextCenter('ALL CLEAR!', W / 2, H / 2 - 16, '#ffe14d', 2);
-            drawTextCenter('SCORE ' + score, W / 2, H / 2 + 6, '#5bdc4a', 1);
+            drawTextCenter('ALL CLEAR!', W / 2, mid - 18, '#ffe14d', 2);
+            drawTextCenter('SCORE ' + score, W / 2, mid + 6, '#5bdc4a', 1);
             if (Math.floor(frame / 25) % 2 === 0) {
-                drawTextCenter('PUSH ENTER', W / 2, H / 2 + 20, '#ffffff', 1);
+                drawTextCenter('PUSH ENTER', W / 2, mid + 20, '#ffffff', 1);
             }
         }
     }
 
     function banner() {
-        ctx.fillStyle = 'rgba(0,0,0,0.72)';
-        ctx.fillRect(0, H / 2 - 26, W, 54);
+        const mid = PLAY_H / 2;
+        ctx.fillStyle = 'rgba(0,0,0,0.78)';
+        ctx.fillRect(0, mid - 28, W, 58);
         ctx.fillStyle = '#ff2e88';
-        ctx.fillRect(0, H / 2 - 27, W, 1);
-        ctx.fillRect(0, H / 2 + 28, W, 1);
+        ctx.fillRect(0, mid - 29, W, 1);
+        ctx.fillRect(0, mid + 30, W, 1);
     }
 
     function drawLevel() {
@@ -1488,15 +1643,74 @@
         ctx.fillRect(0, TS - 1, W, 1);
 
         drawText('SCORE ' + score, 4, 4, '#ffe14d', 1);
-        drawText('ST ' + (levelIndex + 1) + '/' + LEVELS.length, 106, 4, '#8fe3ff', 1);
-
-        // EXTEND 수집 현황 (알록달록 동그란 칩)
-        for (let i = 0; i < LETTERS.length; i++) {
-            drawChip(160 + i * 12, 3, i, extend[i]);
-        }
+        drawTextCenter('ST ' + (levelIndex + 1) + '/' + LEVELS.length, 152, 4, '#8fe3ff', 1);
 
         for (let i = 0; i < Math.min(lives, 5); i++) {
             blit(SPR.heart, W - 10 - i * 9, 4, false);
+        }
+    }
+
+    // 화면 아래쪽 조작판. 버튼 그림은 여기서 그리고 터치 판정은 투명한 HTML 버튼이 받는다
+    function drawPanel() {
+        ctx.fillStyle = '#150a28';
+        ctx.fillRect(0, PANEL_Y, W, H - PANEL_Y);
+        ctx.fillStyle = '#ff2e88';
+        ctx.fillRect(0, PANEL_Y, W, 2);
+
+        for (let i = 0; i < LETTERS.length; i++) drawChip(102 + i * 14, 344, i, extend[i]);
+
+        drawPadButton(6, 396, keys.left, 'left');
+        drawPadButton(76, 396, keys.right, 'right');
+        drawPadButton(146, 396, keys.shoot, 'bubble');
+        drawPadButton(216, 396, keys.jump, 'jump');
+        drawMute(250, 342);
+    }
+
+    function drawPadButton(x, y, pressed, kind) {
+        const size = 64;
+        const oy = pressed ? 2 : 0;
+        ctx.fillStyle = '#3d1f6b';
+        ctx.fillRect(x + 2, y + 4, size - 4, size - 2);
+        ctx.fillStyle = pressed ? '#ff2e88' : '#2a1140';
+        ctx.fillRect(x, y + oy, size, size - 4);
+        ctx.fillStyle = pressed ? '#ffd9f0' : '#6c4ec7';
+        ctx.fillRect(x, y + oy, size, 2);
+        ctx.fillRect(x, y + oy + size - 6, size, 2);
+        ctx.fillRect(x, y + oy, 2, size - 4);
+        ctx.fillRect(x + size - 2, y + oy, 2, size - 4);
+
+        const cx = x + size / 2, cy = y + oy + size / 2 - 2;
+        ctx.fillStyle = pressed ? '#ffffff' : '#ffe14d';
+        if (kind === 'left' || kind === 'right') {
+            const d = kind === 'left' ? -1 : 1;
+            for (let i = 0; i < 12; i++) {
+                ctx.fillRect(cx - d * 6 + d * i, cy - (11 - i) / 2, 2, 11 - i);
+            }
+        } else if (kind === 'jump') {
+            for (let i = 0; i < 11; i++) ctx.fillRect(cx - i, cy - 5 + i, i * 2 + 2, 2);
+        } else {
+            for (let i = 0; i < 16; i++) {
+                const a = (Math.PI * 2 * i) / 16;
+                ctx.fillRect(cx + Math.cos(a) * 11 - 1, cy + Math.sin(a) * 11 - 1, 3, 3);
+            }
+        }
+    }
+
+    function drawMute(x, y) {
+        ctx.fillStyle = '#2a1140';
+        ctx.fillRect(x, y, 28, 28);
+        ctx.fillStyle = '#6c4ec7';
+        ctx.fillRect(x, y, 28, 2); ctx.fillRect(x, y + 26, 28, 2);
+        ctx.fillRect(x, y, 2, 28); ctx.fillRect(x + 26, y, 2, 28);
+
+        ctx.fillStyle = bgmOn ? '#ffe14d' : '#5a4a8a';
+        ctx.fillRect(x + 7, y + 11, 4, 6);
+        for (let i = 0; i < 5; i++) ctx.fillRect(x + 11 + i, y + 11 - i, 2, 6 + i * 2);
+        if (bgmOn) {
+            for (let i = 0; i < 3; i++) ctx.fillRect(x + 19 + i * 2, y + 10 + i, 1, 8 - i * 2);
+        } else {
+            ctx.fillStyle = '#ff4f6d';
+            for (let i = 0; i < 7; i++) ctx.fillRect(x + 18 + i, y + 9 + i, 2, 2);
         }
     }
 
@@ -1520,23 +1734,24 @@
         storyPanel(sc.a, sc.b, storyTimer / sc.d);
 
         if (Math.floor(frame / 30) % 2 === 0) {
-            drawText('PUSH KEY TO SKIP', W - 99, 4, '#6a5aa8', 1);
+            drawTextCenter('TAP TO SKIP', W / 2, 478, '#6a5aa8', 1);
         }
     }
 
     // 대사는 완성된 줄의 위치를 먼저 잡고 왼쪽부터 타자기처럼 채운다
     function storyPanel(a, b, t) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-        ctx.fillRect(0, 168, W, H - 168);
+        ctx.fillStyle = '#150a28';
+        ctx.fillRect(0, PANEL_Y, W, H - PANEL_Y);
         ctx.fillStyle = '#ff2e88';
-        ctx.fillRect(0, 168, W, 1);
+        ctx.fillRect(0, PANEL_Y, W, 2);
 
         const shown = Math.ceil((a.length + b.length) * Math.min(1, t * 2.6));
-        const la = koText(a, 11, '#fff6dd'), lb = koText(b, 11, '#ffd9f0');
-        drawKoAt(a.slice(0, Math.min(a.length, shown)), 11, '#fff6dd', W / 2 - la.w, 170);
+        const la = koText(a, 12, '#fff6dd'), lb = koText(b, 12, '#ffd9f0');
+        drawKoAt(a.slice(0, Math.min(a.length, shown)), 12, '#fff6dd', W / 2 - la.w, 368);
         if (shown > a.length) {
-            drawKoAt(b.slice(0, shown - a.length), 11, '#ffd9f0', W / 2 - lb.w, 202);
+            drawKoAt(b.slice(0, shown - a.length), 12, '#ffd9f0', W / 2 - lb.w, 412);
         }
+        drawMute(250, 342);
     }
 
     function storySky(dark) {
@@ -1546,7 +1761,7 @@
             const t = (frame + st.p) % 120;
             if (t < 60) {
                 ctx.fillStyle = t < 30 ? '#3a2a6a' : '#7a5fc0';
-                ctx.fillRect(st.x, st.y % 134, 1, 1);
+                ctx.fillRect(st.x, st.y % 246, 1, 1);
             }
         }
         if (dark > 0) {
@@ -1556,7 +1771,9 @@
     }
 
     function storyGround() {
-        for (let c = 0; c < COLS; c++) blit(SPR.tile, c * TS, 136, false);
+        for (let c = 0; c < COLS; c++) blit(SPR.tile, c * TS, 248, false);
+        ctx.fillStyle = '#140b26';
+        ctx.fillRect(0, 264, W, PANEL_Y - 264);
     }
 
     function storyGirl(x, y, flip) {
@@ -1577,12 +1794,12 @@
         storySky(0);
         storyGround();
         const bob = Math.sin(frame * 0.08) * 2;
-        blit(SPR.raccoon, 124, 120 + bob, false);
-        storyGirl(154, 120 - bob, true);
+        blit(SPR.raccoon, 118, 232 + bob, false);
+        storyGirl(148, 232 - bob, true);
         for (let i = 0; i < 3; i++) {
             const p = ((frame + i * 45) % 135) / 135;
             ctx.globalAlpha = 1 - p;
-            blit(SPR.heart, 144 + Math.sin(p * 6.3 + i * 2) * 5, 114 - p * 46, false);
+            blit(SPR.heart, 138 + Math.sin(p * 6.3 + i * 2) * 5, 226 - p * 70, false);
             ctx.globalAlpha = 1;
         }
     }
@@ -1590,62 +1807,62 @@
     function sceneVillain(t) {
         storySky(t);
         storyGround();
-        blit(SPR.raccoon, 124, 120, false);
-        storyGirl(154, 120, true);
-        blit(SPR.boss, W / 2 - 12, -32 + Math.min(1, t * 1.8) * 84, false);
+        blit(SPR.raccoon, 118, 232, false);
+        storyGirl(148, 232, true);
+        blit(SPR.boss, W / 2 - 12, -32 + Math.min(1, t * 1.8) * 180, false);
         if (t > 0.3 && Math.floor(frame / 8) % 2 === 0) {
-            drawText('!', 130, 106, '#ffe14d', 1);
-            drawText('!', 160, 106, '#ff5fa2', 1);
+            drawText('!', 124, 218, '#ffe14d', 1);
+            drawText('!', 154, 218, '#ff5fa2', 1);
         }
     }
 
     function sceneKidnap(t) {
         storySky(0.65);
         storyGround();
-        blit(SPR.raccoon, 64, 120, false);
-        const gx = 150 + t * 46, gy = 88 - t * 46;
-        blit(SPR.boss, gx + 28, gy - 34, false);
+        blit(SPR.raccoon, 44, 232, false);
+        const gx = 128 + t * 44, gy = 200 - t * 84;
+        blit(SPR.boss, gx + 26, gy - 36, false);
         storyGirl(gx, gy, false);
         blit(SPR.bubble, gx - 1, gy - 1, false);
-        if (Math.floor(frame / 10) % 2 === 0) drawText('!', 70, 106, '#ffe14d', 1);
+        if (Math.floor(frame / 10) % 2 === 0) drawText('!', 50, 218, '#ffe14d', 1);
     }
 
     function sceneAlone() {
         storySky(0.4);
         storyGround();
-        blit(SPR.raccoon, W / 2 - 8, 120, false);
+        blit(SPR.raccoon, W / 2 - 8, 232, false);
         for (let i = 0; i < 2; i++) {
             const p = ((frame + i * 30) % 60) / 60;
             ctx.fillStyle = '#8fe3ff';
-            ctx.fillRect(W / 2 - 4 + i * 9, 128 + p * 9, 1, 2);
+            ctx.fillRect(W / 2 - 4 + i * 9, 240 + p * 10, 1, 2);
         }
         const gap = 2 + Math.sin(frame * 0.05) * 2;
         ctx.globalAlpha = 0.85;
-        blit(SPR.heart, W / 2 - 14 - gap, 96, false);
-        blit(SPR.heart, W / 2 + 6 + gap, 96, true);
+        blit(SPR.heart, W / 2 - 14 - gap, 200, false);
+        blit(SPR.heart, W / 2 + 6 + gap, 200, true);
         ctx.globalAlpha = 1;
     }
 
     function sceneTrain() {
         storySky(0.15);
         storyGround();
-        blit(SPR.raccoon, 72, 120, false);
+        blit(SPR.raccoon, 48, 232, false);
         for (let i = 0; i < 3; i++) {
             const p = ((frame * 1.8 + i * 50) % 150) / 150;
-            blit(SPR.bubble, 88 + p * 150, 114 - Math.sin(p * 3.14) * 12, false);
+            blit(SPR.bubble, 66 + p * 150, 226 - Math.sin(p * 3.14) * 26, false);
         }
-        sparkle(70, 108, '#ffe14d');
+        sparkle(46, 220, '#ffe14d');
     }
 
     function sceneGo(t) {
         storySky(0.2);
         storyGround();
-        drawCastle(232, 72);
-        const x = 20 + t * 150;
+        drawCastle(204, 184);
+        const x = 14 + t * 140;
         const hop = Math.abs(Math.sin(frame * 0.22)) * 5;
-        blit(SPR.raccoon, x, 120 - hop, false);
+        blit(SPR.raccoon, x, 232 - hop, false);
         ctx.fillStyle = '#4a3f7a';
-        for (let i = 0; i < 3; i++) ctx.fillRect(x - 5 - i * 5, 134, 2, 1);
+        for (let i = 0; i < 3; i++) ctx.fillRect(x - 5 - i * 5, 246, 2, 1);
     }
 
     function drawCastle(x, y) {
@@ -1665,23 +1882,23 @@
     function sceneRescue(t) {
         storySky(0.45 * (1 - t));
         storyGround();
-        blit(SPR.raccoon, 72, 120, false);
+        blit(SPR.raccoon, 52, 232, false);
         if (t < 0.55) {
             if (Math.floor(frame / 4) % 2 === 0) {
-                blit(SPR.boss, 176 + Math.sin(frame * 0.9) * 2, 92, false);
+                blit(SPR.boss, 186 + Math.sin(frame * 0.9) * 2, 186, false);
             }
             for (let i = 0; i < 4; i++) {
                 const p = ((frame * 2.2 + i * 38) % 150) / 150;
-                blit(SPR.bubble, 88 + p * 84, 112 - Math.sin(p * 3.14) * 10, false);
+                blit(SPR.bubble, 70 + p * 108, 224 - Math.sin(p * 3.14) * 24, false);
             }
         } else {
             const k = (t - 0.55) / 0.45;
             for (let i = 0; i < 12; i++) {
                 const a = (Math.PI * 2 * i) / 12;
                 ctx.fillStyle = i % 2 ? '#c86bff' : '#ffe14d';
-                ctx.fillRect(186 + Math.cos(a) * k * 44, 106 + Math.sin(a) * k * 44, 2, 2);
+                ctx.fillRect(196 + Math.cos(a) * k * 46, 200 + Math.sin(a) * k * 46, 2, 2);
             }
-            storyGirl(178, 120, true);
+            storyGirl(186, 232, true);
         }
     }
 
@@ -1689,12 +1906,12 @@
         storySky(0);
         storyGround();
         const bob = Math.sin(frame * 0.08) * 2;
-        blit(SPR.raccoon, 138, 120 + bob, false);
-        storyGirl(166, 120 - bob, true);
+        blit(SPR.raccoon, 116, 232 + bob, false);
+        storyGirl(146, 232 - bob, true);
         for (let i = 0; i < 5; i++) {
             const p = ((frame * 1.2 + i * 30) % 150) / 150;
             ctx.globalAlpha = 1 - p;
-            blit(SPR.heart, 126 + i * 13 + Math.sin(p * 6.3 + i) * 4, 114 - p * 66, false);
+            blit(SPR.heart, 104 + i * 14 + Math.sin(p * 6.3 + i) * 4, 226 - p * 90, false);
             ctx.globalAlpha = 1;
         }
     }
@@ -1702,32 +1919,41 @@
     function drawTitle() {
         const float = Math.sin(frame * 0.05) * 3;
 
-        drawKo('보글보글', 14, '#ffe14d', W / 2, 34 + float);
-        drawTextCenter('BUBBLE RACCOON', W / 2, 74 + float, '#ff2e88', 1);
+        drawKo('보글보글', 16, '#ffe14d', W / 2, 44 + float);
+        drawTextCenter('BUBBLE RACCOON', W / 2, 104 + float, '#ff2e88', 1);
 
-        // 마스코트 줄 세우기
-        blit(SPR.raccoon, W / 2 - 42, 96 + float, false);
-        blit(SPR.bubble, W / 2 - 8, 94 + float, false);
-        blit(SPR.enemy[0], W / 2 + 26, 96 + float, true);
+        // 마스코트 한 줄
+        blit(SPR.raccoon, W / 2 - 46, 140 + float, false);
+        blit(SPR.bubble, W / 2 - 8, 138 + float, false);
+        blit(SPR.enemy[0], W / 2 + 26, 140 + float, true);
 
-        blit(SPR.enemy[1], 44, 128 + Math.sin(frame * 0.06) * 3, false);
-        blit(SPR.enemy[2], W - 60, 128 + Math.sin(frame * 0.06 + 2) * 3, true);
-        blit(SPR.fruit[4], 70, 132, false);
-        blit(SPR.fruit[5], W - 82, 132, false);
+        drawKo('버블에 가두고 터뜨리자!', 11, '#ff9ed2', W / 2, 176);
 
-        drawKo('버블에 가두고 터뜨리자!', 10, '#ff9ed2', W / 2, 150);
+        blit(SPR.enemy[1], 40, 218 + Math.sin(frame * 0.06) * 3, false);
+        blit(SPR.fruit[0], 82, 222, false);
+        blit(SPR.fruit[4], 130, 222, false);
+        blit(SPR.fruit[5], 178, 222, false);
+        blit(SPR.enemy[2], 224, 218 + Math.sin(frame * 0.06 + 2) * 3, true);
 
-        for (let i = 0; i < LETTERS.length; i++) {
-            drawChip(W / 2 - 36 + i * 12, 172, i, true);
-        }
+        for (let i = 0; i < LETTERS.length; i++) drawChip(102 + i * 14, 262, i, true);
+        drawTextCenter('COLLECT EXTEND FOR 1UP', W / 2, 284, '#8fe3ff', 1);
 
-        drawTextCenter('COLLECT EXTEND FOR 1UP', W / 2, 188, '#8fe3ff', 1);
+        ctx.fillStyle = '#150a28';
+        ctx.fillRect(0, PANEL_Y, W, H - PANEL_Y);
+        ctx.fillStyle = '#ff2e88';
+        ctx.fillRect(0, PANEL_Y, W, 2);
 
-        if (best > 0) drawTextCenter('BEST ' + best, W / 2, 202, '#5bdc4a', 1);
+        drawKo('아래 버튼으로 조작', 10, '#c9a7e8', W / 2, 352);
+        drawTextCenter('KEYBOARD', W / 2, 392, '#6a5aa8', 1);
+        drawTextCenter('ARROW MOVE  SPACE JUMP', W / 2, 406, '#8fe3ff', 1);
+        drawTextCenter('Z BUBBLE   M MUSIC', W / 2, 420, '#8fe3ff', 1);
+
+        if (best > 0) drawTextCenter('BEST ' + best, W / 2, 442, '#5bdc4a', 1);
 
         if (Math.floor(frame / 25) % 2 === 0) {
-            drawTextCenter('PUSH ENTER', W / 2, 220, '#ffffff', 1);
+            drawTextCenter('PUSH START', W / 2, 464, '#ffffff', 2);
         }
+        drawMute(250, 342);
     }
 
     /* ------------------------- 루프 ------------------------- */
@@ -1735,9 +1961,22 @@
     loadLevel(0);
     state = 'title';
 
+    const gamepad = document.getElementById('gamepad');
+    let padShown = null;
+
+    // 조작 버튼은 실제로 플레이할 때만 띄운다 (타이틀/컷신에서는 화면을 가리지 않게)
+    function syncPad() {
+        const show = (state === 'playing' || state === 'dying' || state === 'cleared');
+        if (show !== padShown) {
+            padShown = show;
+            gamepad.style.display = show ? '' : 'none';
+        }
+    }
+
     function loop() {
         update();
         draw();
+        syncPad();
         for (const k in pressed) delete pressed[k];
         requestAnimationFrame(loop);
     }

@@ -1,5 +1,5 @@
 // 홈 화면에 추가한 뒤에는 인터넷 없이도 게임이 실행되도록 껍데기를 캐시해 둔다.
-const CACHE = 'boglbogl-v1';
+const CACHE = 'boglbogl-v2';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (e) {
