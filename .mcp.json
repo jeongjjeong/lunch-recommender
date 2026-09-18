@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "video-analyzer": {
+      "command": "npx",
+      "args": ["mcp-video-analyzer@latest"]
+    }
+  }
+}
