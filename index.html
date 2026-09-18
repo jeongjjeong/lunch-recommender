@@ -2,8 +2,17 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>보글보글 - 너구리 버블</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>보글보글 너구리</title>
+<meta name="theme-color" content="#120a1e">
+<meta name="description" content="너구리가 납치된 보글이를 구하러 10개의 성을 넘는 픽셀아트 아케이드 게임">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="보글보글">
 <style>
     * { box-sizing: border-box; }
 
@@ -1735,6 +1744,14 @@
 
     loop();
 })();
+</script>
+
+<script>
+    if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('sw.js').catch(function () {});
+        });
+    }
 </script>
 
 </body>
