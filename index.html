@@ -1043,7 +1043,7 @@
         player = {
             x: start.x + 2, y: start.y + 3, w: 12, h: 13,
             vx: 0, vy: 0, dir: 1, onGround: false,
-            invincible: 60, shootCooldown: 0, squash: 0, blink: 0, walk: 0
+            invincible: 120, shootCooldown: 0, squash: 0, blink: 0, walk: 0
         };
     }
 
@@ -1522,38 +1522,38 @@
         const mid = PLAY_H / 2;
         if (state === 'cleared') {
             banner();
-            drawTextCenter('STAGE CLEAR!', W / 2, mid - 16, '#5bdc4a', 2);
-            drawKo('잘했어!', 11, '#ffe14d', W / 2, mid + 4);
+            drawTextCenter('STAGE CLEAR!', W / 2, mid - 24, '#5bdc4a', 2);
+            drawKo('잘했어!', 11, '#ffe14d', W / 2, mid - 2);
         }
         if (state === 'dying') {
             banner();
-            drawKo('아야!', 13, '#ff7fae', W / 2, mid - 14);
+            drawKo('아야!', 13, '#ff7fae', W / 2, mid - 18);
         }
         if (state === 'gameover') {
             banner();
-            drawTextCenter('GAME OVER', W / 2, mid - 18, '#ff4f6d', 2);
-            drawTextCenter('SCORE ' + score, W / 2, mid + 6, '#ffe14d', 1);
+            drawTextCenter('GAME OVER', W / 2, mid - 22, '#ff4f6d', 2);
+            drawTextCenter('SCORE ' + score, W / 2, mid + 2, '#ffe14d', 1);
             if (Math.floor(frame / 25) % 2 === 0) {
-                drawTextCenter('PUSH ENTER', W / 2, mid + 20, '#ffffff', 1);
+                drawTextCenter('PUSH START', W / 2, mid + 20, '#ffffff', 1);
             }
         }
         if (state === 'allclear') {
             banner();
-            drawTextCenter('ALL CLEAR!', W / 2, mid - 18, '#ffe14d', 2);
-            drawTextCenter('SCORE ' + score, W / 2, mid + 6, '#5bdc4a', 1);
+            drawTextCenter('ALL CLEAR!', W / 2, mid - 22, '#ffe14d', 2);
+            drawTextCenter('SCORE ' + score, W / 2, mid + 2, '#5bdc4a', 1);
             if (Math.floor(frame / 25) % 2 === 0) {
-                drawTextCenter('PUSH ENTER', W / 2, mid + 20, '#ffffff', 1);
+                drawTextCenter('PUSH START', W / 2, mid + 20, '#ffffff', 1);
             }
         }
     }
 
     function banner() {
         const mid = PLAY_H / 2;
-        ctx.fillStyle = 'rgba(0,0,0,0.78)';
-        ctx.fillRect(0, mid - 28, W, 58);
+        ctx.fillStyle = 'rgba(0,0,0,0.82)';
+        ctx.fillRect(0, mid - 32, W, 68);
         ctx.fillStyle = '#ff2e88';
-        ctx.fillRect(0, mid - 29, W, 1);
-        ctx.fillRect(0, mid + 30, W, 1);
+        ctx.fillRect(0, mid - 33, W, 1);
+        ctx.fillRect(0, mid + 36, W, 1);
     }
 
     function drawLevel() {
