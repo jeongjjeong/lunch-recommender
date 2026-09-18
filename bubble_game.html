@@ -21,6 +21,7 @@
         text-align: center;
         user-select: none;
         -webkit-user-select: none;
+        overscroll-behavior: none;
         -webkit-tap-highlight-color: transparent;
     }
 
@@ -49,6 +50,7 @@
     }
 
     canvas {
+        touch-action: none;
         width: 100%;
         height: auto;
         display: block;
@@ -85,6 +87,7 @@
     #touchpad .group { display: flex; gap: 10px; }
 
     #touchpad button {
+        touch-action: none;
         width: 74px;
         height: 74px;
         border-radius: 12px;
@@ -646,6 +649,12 @@
 
     canvas.addEventListener('mousedown', function () { audioOn(); setKey('start', true); });
     canvas.addEventListener('mouseup', function () { setKey('start', false); });
+    canvas.addEventListener('touchstart', function (e) {
+        e.preventDefault(); audioOn(); setKey('start', true);
+    }, { passive: false });
+    canvas.addEventListener('touchend', function (e) {
+        e.preventDefault(); setKey('start', false);
+    }, { passive: false });
 
     /* ------------------------- 사운드 ------------------------- */
     let actx = null;
@@ -740,16 +749,19 @@
     }
 
     // 발판은 위에서 내려올 때만 막는다 (아래에서 뚫고 올라갈 수 있음)
+    // 발밑 타일을 (y + h) 기준으로 보기 때문에, 바닥에 서 있는 동안
+    // onGround 가 매 프레임 유지된다. (예전에는 한 프레임씩 끊겨서 점프가 씹혔다)
     function moveY(e) {
         const prevBottom = e.y + e.h;
         e.y += e.vy;
         e.onGround = false;
         const left = Math.floor(e.x / TS);
         const right = Math.floor((e.x + e.w - 1) / TS);
-        if (e.vy > 0) {
-            const r = Math.floor((e.y + e.h - 1) / TS);
+        if (e.vy >= 0) {
+            const r = Math.floor((e.y + e.h) / TS);
+            const tol = Math.max(1, e.vy);
             for (let c = left; c <= right; c++) {
-                if (solid(c, r) && prevBottom <= r * TS + 1) {
+                if (solid(c, r) && prevBottom <= r * TS + tol) {
                     e.y = r * TS - e.h; e.vy = 0; e.onGround = true;
                     break;
                 }
@@ -852,9 +864,16 @@
         else if (keys.right && !keys.left) { p.vx = RUN_SPEED; p.dir = 1; p.walk++; }
         else { p.vx = 0; p.walk = 0; }
 
-        if (pressed.jump && p.onGround) {
+        // 착지 직전/직후에 누른 점프도 살려준다 (특히 터치 조작)
+        if (pressed.jump) p.jumpBuffer = 8;
+        else if (p.jumpBuffer > 0) p.jumpBuffer--;
+        if (p.onGround) p.coyote = 6;
+        else if (p.coyote > 0) p.coyote--;
+
+        if (p.jumpBuffer > 0 && p.coyote > 0) {
             p.vy = JUMP_V;
             p.onGround = false;
+            p.jumpBuffer = 0; p.coyote = 0;
             p.squash = 6;
             beep(500, 0.07, 'square', 0.04);
         }
@@ -921,11 +940,12 @@
             if (e.hitWall) e.vx = -e.vx;
             moveY(e);
 
+            // 발판 끝에서는 돌아서고, 아주 가끔 그대로 떨어지거나 폴짝 뛴다
             if (e.onGround) {
                 const aheadC = Math.floor((e.vx > 0 ? e.x + e.w + 1 : e.x - 1) / TS);
                 const belowR = Math.floor((e.y + e.h + 1) / TS);
-                if (!solid(aheadC, belowR) && Math.random() < 0.85) e.vx = -e.vx;
-                if (Math.random() < 0.005) e.vy = JUMP_V * 0.85;
+                if (!solid(aheadC, belowR) && Math.random() > 0.02) e.vx = -e.vx;
+                if (Math.random() < 0.002) e.vy = JUMP_V * 0.85;
             }
         }
     }
