@@ -803,8 +803,12 @@ function renderTodo(){
 
 // ---------- 분석 탭 ----------
 function monthlyGrowth(key){
-  const h = kbHistFor(key);
-  if (h && h.length >= 7){ const a = h[h.length-7].mid, b = h[h.length-1].mid; return {g: (Math.pow(b/a, 1/6)-1)*100, count: 6, src: "KB 6개월"}; }
+  let h = kbHistFor(key), src = "KB 6개월";
+  if (!h){ // 같은 단지 다른 평형의 KB 이력으로 대신
+    const other = state.kbhist.find(x => key.startsWith(String(x.complex||"")) && Array.isArray(x.rows));
+    if (other){ h = other.rows; src = `KB ${other.area} 6개월`; }
+  }
+  if (h && h.length >= 7){ const a = h[h.length-7].mid, b = h[h.length-1].mid; return {g: (Math.pow(b/a, 1/6)-1)*100, count: 6, src}; }
   return monthlyGrowthReal(key);
 }
 function monthlyGrowthReal(key){ // 최근 12개월 실거래 선형회귀 → 월 상승률 %
