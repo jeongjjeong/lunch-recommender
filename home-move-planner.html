@@ -108,7 +108,7 @@ button:focus-visible,.cand:focus-visible,.li.click:focus-visible{outline:2px sol
 .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .banner{background:var(--orange-soft);color:var(--orange);border-radius:14px;padding:12px 16px;font-size:14px;font-weight:500}
 nav.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav.tabbar .in{max-width:600px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+nav.tabbar .in{max-width:600px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
 nav.tabbar button{border:0;background:none;color:var(--muted);font:inherit;font-size:11px;font-weight:700;padding:8px 0 10px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
 nav.tabbar button svg{width:22px;height:22px}
 nav.tabbar button[aria-selected="true"]{color:var(--ink)}
@@ -160,6 +160,7 @@ nav.tabbar button[aria-selected="true"]{color:var(--ink)}
   <button role="tab" data-tab="loans"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 9 12 4l9 5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg>대출</button>
   <button role="tab" data-tab="market"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>시세</button>
   <button role="tab" data-tab="todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>할 일</button>
+  <button role="tab" data-tab="analysis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>분석</button>
 </div></nav>
 <div id="sheet"></div>
 
@@ -576,6 +577,16 @@ function quickOut(){
     <div class="rowkv"><span class="k">이 팔 가격이면 추가 조달 0원 최대가</span><span class="v blue">${won(maxP)}</span></div>
     <div class="small">인테리어 ${won(n(S().qInterior),false)} · 이사 ${won(n(S().qMoving),false)} · 등기 등 ${won(n(S().qLegal),false)} 포함</div></div>`;
 }
+function priceTrail(b){
+  const h = Array.isArray(b.priceHistory) ? b.priceHistory.filter(x => has(x.price)) : [];
+  if (h.length < 2) return h.length ? {text: `${eok(n(h[0].price))} (${String(h[0].date||"").slice(5).replace("-","/")} 등록)`, delta: 0, h} : null;
+  const first = n(h[0].price), last = n(h[h.length-1].price);
+  return {text: h.map(x => `${eok(n(x.price))}${x.date ? `(${String(x.date).slice(5).replace("-","/")})` : ""}`).join(" → "), delta: last - first, h};
+}
+function trailLine(b){
+  const t = priceTrail(b); if (!t) return "";
+  return `<div class="rowkv"><span class="k">호가 기록</span><span class="v ${t.delta<0?"green":t.delta>0?"red":""}" style="font-weight:500;font-size:13px">${esc(t.text)}${t.delta ? ` ${t.delta<0?"▼":"▲"}${won(Math.abs(t.delta),false)}` : ""}</span></div>`;
+}
 let showDropped = false;
 const STATUS = ["관심","협상 중","보류","탈락"];
 function buyCard(b){
@@ -583,6 +594,7 @@ function buyCard(b){
   return `<div class="card tight" style="${dropped(b)?"opacity:.6":""}">
     <div class="cand-head"><div><div class="cand-name">${esc(b.label)}</div><div class="small">KB ${has(b.kb)?eok(n(b.kb)):"미입력"} · 부대비용 ${won(x.bc.extras)}</div></div><div class="mid">${eok(x.bc.price)}</div></div>
     <div class="chips">${STATUS.map(v => `<button class="chip" style="padding:5px 11px;font-size:13px" data-act="setStatus" data-id="${esc(b.id)}" data-v="${v}" aria-pressed="${st===v}" ${readOnly?"disabled":""}>${v}</button>`).join("")}</div>
+    ${trailLine(b)}
     ${fundingBlock(p)}
     <div class="stats"><div class="stat"><div class="k">주담대</div><div class="v">${won(Math.min(Math.max(x.need,0), p.limit), false)}</div></div>
       <div class="stat"><div class="k">월 상환 (전체)</div><div class="v">${p.monthly ? won(totalMonthly(p), false) : "-"}</div></div>
@@ -744,6 +756,103 @@ function renderTodo(){
   </div>`;
 }
 
+// ---------- 분석 탭 ----------
+function monthlyGrowth(key){ // 최근 12개월 실거래 선형회귀 → 월 상승률 %
+  const cutoff = Date.now() - 365*864e5;
+  const pts = marketRefs(key).real.filter(r => /^\d{4}-\d{2}-\d{2}/.test(r.date||"")).map(r => ({t: new Date(r.date).getTime(), v: n(r.price)})).filter(p => p.t >= cutoff);
+  if (pts.length < 4) return {g: NaN, count: pts.length};
+  const mt = pts.reduce((a,p)=>a+p.t,0)/pts.length, mv = pts.reduce((a,p)=>a+p.v,0)/pts.length;
+  const slope = pts.reduce((a,p)=>a+(p.t-mt)*(p.v-mv),0) / pts.reduce((a,p)=>a+(p.t-mt)**2,0); // 만원/ms
+  const days = (Math.max(...pts.map(p=>p.t)) - Math.min(...pts.map(p=>p.t)))/864e5;
+  return {g: slope*30.4*864e5/mv*100, count: pts.length, days: Math.round(days)};
+}
+const SELL_KEY = () => { const k = state.comps.filter(c => (c.side||"") === "우리집(매도)" && /23평/.test(c.area||"")).map(c => groupKey(c.complex, c.area))[0]; return k || "현암마을동성2차 23평"; };
+const wait = { buyId: ls.get("waitBuy") || "", gBuy: null, gSell: null, dRate: 0.5, months: null };
+function monthsToMove(){ const m = /^(\d{4})-(\d{1,2})/.exec(S().moveDate||""); if (!m) return 5; const now = new Date(); return Math.max(1, (+m[1]-now.getFullYear())*12 + (+m[2]-1-now.getMonth())); }
+function waitCalc(b, gB, gS, dRate, months){
+  const sell = currentSell(), S0 = sell ? n(sell.price) : 0;
+  const x0 = evalBuy(b, S0);
+  const main0 = x0.plan.parts.find(q => !isSub(q.loan));
+  const fb = Math.pow(1+gB/100, months), fs = Math.pow(1+gS/100, months);
+  const b1 = {...b, price: String(Math.round(n(b.price)*fb)), kb: String(Math.round(x0.kb*fb))};
+  const x1 = evalBuy(b1, Math.round(S0*fs));
+  const loan1 = main0 ? {...main0.loan, rate: String(n(main0.loan.rate) - dRate)} : null;
+  const p1 = loan1 ? financing(x1.need, x1.kb, loan1) : x1.plan;
+  const exCost = pl => pl.short > 0 ? extra(pl.short).monthly * 12 * (n(S().horizon)||5) : 0;
+  const cost0 = Math.max(0,x0.need) + x0.plan.cost + exCost(x0.plan);
+  const cost1 = Math.max(0,x1.need) + p1.cost + exCost(p1);
+  return {x0, x1, p1, S0, S1: Math.round(S0*fs), P1: n(b1.price), diff: cost1 - cost0, dNeed: x1.need - x0.need, dInt: (p1.cost + exCost(p1)) - (x0.plan.cost + exCost(x0.plan))};
+}
+function renderAnalysis(){
+  const list = state.buys.filter(b => !dropped(b));
+  let h = `<div class="sec" style="padding-top:4px"><h2>지금 사기 vs 기다렸다 사기</h2></div>`;
+  if (!list.length) h += `<div class="card"><div class="empty">매물을 먼저 추가해 주세요</div></div>`;
+  else {
+    const b = list.find(v => v.id === wait.buyId) || list[0];
+    const key = has(b.complex) ? groupKey(b.complex, b.area) : "";
+    const gb = key ? monthlyGrowth(key) : {g: NaN, count: 0}, gs = monthlyGrowth(SELL_KEY());
+    const gB = wait.gBuy ?? (isFinite(gb.g) ? Math.round(gb.g*10)/10 : 1), gS = wait.gSell ?? (isFinite(gs.g) ? Math.round(gs.g*10)/10 : 1);
+    const months = wait.months ?? monthsToMove(), dRate = wait.dRate;
+    const r = waitCalc(b, gB, gS, dRate, months);
+    // 손익분기: 매수 단지 월 상승률
+    let lo = -5, hi = 10; for (let i=0;i<40;i++){ const mid=(lo+hi)/2; if (waitCalc(b, mid, gS, dRate, months).diff > 0) hi = mid; else lo = mid; }
+    const be = (lo+hi)/2;
+    const better = r.diff > 0 ? "지금" : "기다리기";
+    h += `<div class="card">
+      <div class="chips">${list.map(v => `<button class="chip" data-act="waitBuy" data-id="${esc(v.id)}" aria-pressed="${v.id===b.id}">${esc(v.label)}</button>`).join("")}</div>
+      <div><div class="small">${months}개월 기다리면</div>
+      <div class="big ${r.diff > 0 ? "red" : "green"}">${r.diff > 0 ? won(r.diff)+" 더 들어요" : won(-r.diff)+" 아껴요"}</div>
+      <div class="small">${better === "지금" ? "지금 사는 쪽이 유리해요" : "기다리는 쪽이 유리해요"} · 집값 차이 ${r.dNeed>=0?"+":""}${won(r.dNeed,false)}, 이자 차이 ${r.dInt>=0?"+":""}${won(r.dInt,false)} (${esc(S().horizon||5)}년)</div></div>
+      <div class="funding"><span class="label">손익분기: 이 매물이 월</span><span class="v blue">${be.toFixed(1)}%</span></div>
+      <div class="small" style="padding:0 4px">이보다 빨리 오르면 기다리는 게 손해, 느리면 이득 (우리 집 월 ${gS}% 상승·금리 ${dRate}%p 인하 가정)</div>
+      <div class="field"><div class="rowkv"><span class="k">이 매물 월 상승률 ${isFinite(gb.g) ? `<span class="small">(최근 ${gb.count}건 추세 ${gb.g.toFixed(1)}%)</span>` : ""}</span><span class="v" id="w-gb-l">${gB}%</span></div><input type="range" id="w-gb" min="-2" max="5" step="0.1" value="${gB}"></div>
+      <div class="field"><div class="rowkv"><span class="k">우리 집 월 상승률 ${isFinite(gs.g) ? `<span class="small">(최근 ${gs.count}건 추세 ${gs.g.toFixed(1)}%)</span>` : ""}</span><span class="v" id="w-gs-l">${gS}%</span></div><input type="range" id="w-gs" min="-2" max="5" step="0.1" value="${gS}"></div>
+      <div class="field"><div class="rowkv"><span class="k">그때까지 금리 인하</span><span class="v" id="w-dr-l">${dRate}%p</span></div><input type="range" id="w-dr" min="0" max="1.5" step="0.1" value="${dRate}"></div>
+      <div class="field"><div class="rowkv"><span class="k">기다리는 기간</span><span class="v" id="w-m-l">${months}개월</span></div><input type="range" id="w-m" min="1" max="12" step="1" value="${months}"></div>
+      <div class="details">
+        <div class="rowkv"><span class="k">매수가</span><span class="v">${eok(n(b.price))} → ${eok(r.P1)}</span></div>
+        <div class="rowkv"><span class="k">매도가</span><span class="v">${eok(r.S0)} → ${eok(r.S1)}</span></div>
+        <div class="rowkv"><span class="k">추가 조달</span><span class="v">${won(r.x0.plan.short,false)} → ${won(r.p1.short,false)}</span></div>
+        <div class="rowkv"><span class="k">월 상환 (전체)</span><span class="v">${won(totalMonthly(r.x0.plan),false)} → ${won(totalMonthly(r.p1),false)}</span></div>
+        <div class="small">KB시세도 매수가와 같은 비율로 오른다고 보고 주담대 한도를 다시 계산했어요. 최근 몇 달 추세는 가파를 수 있으니 슬라이더로 바꿔 보세요.</div>
+      </div></div>`;
+  }
+  h += renderSellAnalysis();
+  // 호가 변동
+  const trails = state.buys.map(b => ({b, t: priceTrail(b)})).filter(v => v.t);
+  h += `<div class="sec"><h2>호가 변동</h2><span class="small">매물 가격을 고치면 자동 기록</span></div><div class="card tight">`;
+  h += trails.length ? `<div class="list">${trails.sort((a,c) => a.t.delta - c.t.delta).map(({b,t}) => `<div class="li"><div><div class="t">${esc(b.label)} ${t.delta<0?'<span class="badge green">호가 인하</span>':t.delta>0?'<span class="badge red">호가 인상</span>':""}</div><div class="s">${esc(t.text)}</div></div><div class="r t ${t.delta<0?"green":t.delta>0?"red":""}">${t.delta ? (t.delta<0?"▼":"▲")+won(Math.abs(t.delta),false) : "변동 없음"}</div></div>`).join("")}</div>` : `<div class="empty">기록된 호가가 없어요</div>`;
+  return h + `</div>`;
+}
+function renderSellAnalysis(){
+  const key = SELL_KEY(), r = marketRefs(key);
+  const now = Date.now(), m3 = r.real.filter(x => now - new Date(x.date).getTime() <= 92*864e5);
+  const avg3 = m3.length ? m3.reduce((a,x)=>a+n(x.price),0)/m3.length : NaN;
+  const maxReal = r.real.length ? Math.max(...r.real.map(x => n(x.price))) : NaN;
+  const kb = r.kb || (isFinite(avg3) ? Math.round(avg3/100)*100 : 0), kbProxy = !r.kb;
+  const asks = r.asks.map(a => n(a.price)).sort((a,b)=>a-b);
+  const buyerLoan = Math.max(0, Math.min(kb * (n(S().ltv)||40)/100 - n(S().roomDeduct), n(S().cap)||60000));
+  const rows = state.sells.slice().sort((a,b)=>n(b.price)-n(a.price)).map(sl => {
+    const P = n(sl.price), rank = asks.filter(a => a < P).length + 1;
+    const buyerCash = P + acqTax(P,false).amount + brokerFee(P,"",!!S().vat).fee - buyerLoan;
+    return `<div class="li" style="align-items:flex-start"><div><div class="t">${esc(sl.label)} · ${eok(P)}</div>
+      <div class="s">최근 실거래 대비 ${r.last ? ((P/n(r.last.price)-1)*100).toFixed(1)+"%" : "-"} · 3개월 평균 대비 ${isFinite(avg3) ? ((P/avg3-1)*100).toFixed(1)+"%" : "-"} · 호가 ${asks.length ? (() => { const tot = asks.length + (asks.includes(P)?0:1); return rank === 1 ? `${tot}개 중 가장 낮음` : rank >= tot ? `${tot}개 중 가장 높음` : `${tot}개 중 ${rank}번째로 낮음`; })() : "-"}</div>
+      <div class="s">사는 사람: 대출 ${won(buyerLoan,false)} · 필요 현금 약 <b>${won(buyerCash,false)}</b></div></div>
+      <div class="r"><div class="t">${won(sellCalc(sl).net,false)}</div><div class="s">우리 순수령</div></div></div>`;
+  }).join("");
+  return `<div class="sec"><h2>우리 집 매도가 분석</h2><span class="small">${esc(key)}</span></div>
+  <div class="card tight">
+    <div class="stats"><div class="stat"><div class="k">최근 실거래</div><div class="v">${r.last ? eok(n(r.last.price)) : "-"}</div></div>
+      <div class="stat"><div class="k">3개월 평균</div><div class="v">${isFinite(avg3) ? eok(avg3) : "-"}</div></div>
+      <div class="stat"><div class="k">최고 실거래</div><div class="v">${isFinite(maxReal) ? eok(maxReal) : "-"}</div></div></div>
+    ${trendChart(key, r.real, r.kb)}
+    <div class="small">경쟁 호가: ${asks.length ? asks.map(eok).join(" · ") : "없음"}</div>
+    <div class="small">사는 사람 대출 = KB ${eok(kb)}${kbProxy ? "(KB 미입력, 3개월 평균 실거래로 대신)" : ""} × ${esc(S().ltv)}% − ${won(n(S().roomDeduct),false)}. 이 돈 말고는 현금으로 내야 해서, 필요 현금이 클수록 살 수 있는 사람이 줄어요.</div>
+    <div class="list">${rows || `<div class="empty">팔 가격을 추가해 주세요</div>`}</div>
+    ${kbProxy ? `<div class="note">우리 집(23평) KB시세를 시세 탭에 'KB시세'로 넣으면 사는 사람 대출이 정확해져요.</div>` : ""}
+  </div>`;
+}
+
 // ---------- 시트(입력 폼) ----------
 function fieldHtml(f, v){
   const id = "f-"+f.k, hint = f.hint ? `<span class="hint">${esc(f.hint)}</span>` : "";
@@ -777,7 +886,7 @@ function closeSheet(){ sheet = null; renderSheet(); }
 function render(){
   document.querySelectorAll("nav.tabbar button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
   const a = document.activeElement, keep = a && a.id && $("#main").contains(a) ? {id:a.id, s:a.selectionStart, e:a.selectionEnd} : null;
-  const R = {home:renderHome, homes:renderHomes, loans:renderLoans, market:renderMarket, todo:renderTodo};
+  const R = {home:renderHome, homes:renderHomes, loans:renderLoans, market:renderMarket, todo:renderTodo, analysis:renderAnalysis};
   $("#main").innerHTML = R[tab]();
   if (keep){ const el = document.getElementById(keep.id); if (el){ el.focus(); try{ el.setSelectionRange(keep.s, keep.e); }catch(e){} } }
 }
@@ -794,6 +903,7 @@ document.addEventListener("click", async e => {
   else if (act === "toggle"){ if (e.target.closest("button")) return; open.has(id) ? open.delete(id) : open.add(id); render(); }
   else if (act === "new") openSheet({coll});
   else if (act === "edit"){ e.stopPropagation(); openSheet({coll, id}); }
+  else if (act === "waitBuy"){ wait.buyId = id; wait.gBuy = null; ls.set("waitBuy", id); render(); }
   else if (act === "pt"){ chartSel.set(t.dataset.g, +t.dataset.i); render(); }
   else if (act === "toggleGroup"){ openGroups.has(id) ? openGroups.delete(id) : openGroups.add(id); render(); }
   else if (act === "toggleDropped"){ showDropped = !showDropped; render(); }
@@ -820,10 +930,15 @@ document.addEventListener("change", async e => {
     const rec = state.todos.find(x => x.id === t.dataset.id); if (!rec) return;
     const {id, ...rest} = rec; await saveDoc("todos", id, {...rest, done: t.checked});
   }
+  if (/^w-(gb|gs|dr|m)$/.test(t.id)){ wait[{"w-gb":"gBuy","w-gs":"gSell","w-dr":"dRate","w-m":"months"}[t.id]] = +t.value; render(); }
   if (t.id === "q-kb"){ quick.kb = t.value; quick.price = ""; ls.set("quickKb", t.value); render(); }
 });
 document.addEventListener("input", e => {
   const t = e.target;
+  if (/^w-(gb|gs|dr|m)$/.test(t.id)){
+    const unit = {"w-gb":"%","w-gs":"%","w-dr":"%p","w-m":"개월"}[t.id];
+    $("#"+t.id+"-l").textContent = t.value + unit;
+  }
   if (t.id === "q-price" || t.id === "q-sale"){
     quick[t.id === "q-price" ? "price" : "sale"] = t.value;
     $("#"+t.id+"-l").textContent = won(n(t.value));
@@ -847,6 +962,11 @@ document.addEventListener("submit", async e => {
   const {coll} = sheet, id = sheet.id || newId(), prev = sheet.id ? (state[coll].find(r => r.id === sheet.id) || {}) : {};
   const rec = {}; Object.keys(prev).forEach(k => { if (k !== "id") rec[k] = prev[k]; });
   SCHEMAS[coll].fields.forEach(x => rec[x.k] = x.t === "chk" ? fd.has(x.k) : String(fd.get(x.k) ?? "").trim());
+  if (coll === "buys" && has(rec.price)){ // 호가 변동 기록
+    const hist = Array.isArray(prev.priceHistory) ? prev.priceHistory.slice() : (has(prev.price) ? [{price: String(prev.price), date: String(prev.at||"").slice(0,10)}] : []);
+    if (!hist.length || n(hist[hist.length-1].price) !== n(rec.price)) hist.push({price: rec.price, date: new Date().toISOString().slice(0,10), by: whoSel.value});
+    rec.priceHistory = hist;
+  }
   closeSheet(); await saveDoc(coll, id, rec);
 });
 
