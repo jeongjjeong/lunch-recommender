@@ -70,7 +70,7 @@ input[type=checkbox]{width:auto}
 textarea{min-height:60px;resize:vertical}
 .hint{font-size:12px;color:var(--muted)}
 .formbar{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
-.note{font-size:12px;color:var(--muted);max-width:32ch}
+.note{font-size:12px;color:var(--muted);max-width:40ch;white-space:pre-line}
 .by{font-size:11px;color:var(--muted)}
 .cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
 ul.todo{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column}
@@ -206,7 +206,7 @@ const SCHEMAS = {
     {k:"moving", l:"이사비 (만원)", t:"num"},
     {k:"legal", l:"등기·법무사·채권 (만원)", t:"num", hint:"비우면 매수가의 0.15%로 추정"},
     {k:"date", l:"입주 가능일", t:"text"},
-    {k:"note", l:"메모 (장단점, 협상 포인트)", t:"area"} ]},
+    {k:"note", l:"특징·메모 (장단점, 협상 포인트)", t:"area"} ]},
   loans: { title:"대출 조건", addLabel:"은행 조건 추가", fields:[
     {k:"kind", l:"대출 종류", t:"sel", opts:["주담대","신용·기타"], hint:"주담대로 부족한 금액은 신용·기타 대출로 채워 계산"},
     {k:"bank", l:"은행·대출자", t:"text", req:true},
@@ -363,7 +363,8 @@ function combos(){
     const bc = buyCalc(b);
     const need = bc.total - sellNet - cash;
     const plan = financing(need, has(b.kb) ? n(b.kb) : bc.price);
-    const feasible = need <= 0 || (plan.ok && plan.dsrOk);
+    const noSubs = !state.loans.some(isSub);
+    const feasible = need <= 0 || ((plan.ok || noSubs) && plan.dsrOk);
     return {buy:b, bc, need, plan, feasible, moveCost: bc.extras + (need > 0 ? plan.cost : 0)};
   }).sort((a,b) => (b.feasible - a.feasible) || (a.moveCost - b.moveCost));
 }
@@ -419,20 +420,21 @@ function renderSummary(){
       <span class="hint">매도가를 바꿔 보며 대출 필요액이 어떻게 변하는지 보세요.</span></div>`;
   }
   h += `<div class="panel"><div class="row"><h2>매수 후보별 최적 대출 조합</h2><span class="hint">부대비용이 적은 순 · 한도·DSR 통과 조합 우선</span></div>
-  <div class="scroll"><table><thead><tr><th>매수 후보</th><th class="r">매수가</th><th class="r">부대비용</th><th class="r">필요 대출</th><th>추천 대출</th><th class="r">월 상환</th><th class="r">DSR(스트레스)</th><th class="r">${esc(S.horizon||5)}년 이자+특약비</th><th class="r">총 부대비용</th><th>판정</th></tr></thead><tbody>`;
+  <div class="scroll"><table><thead><tr><th>매수 후보</th><th class="r">매수가</th><th class="r">부대비용</th><th class="r">필요 대출</th><th>주담대 · 추가 조달</th><th class="r">월 상환</th><th class="r">DSR(스트레스)</th><th class="r">${esc(S.horizon||5)}년 이자+특약비</th><th class="r">총 부대비용</th><th>판정</th></tr></thead><tbody>`;
   if (!list.length) h += `<tr><td colspan="10" class="hint">매수 후보를 추가하면 여기에서 비교됩니다.</td></tr>`;
   list.forEach((x,i) => {
     const p = x.plan, loanNeed = x.need > 0;
     let verdict;
     if (!loanNeed) verdict = `<span class="pill good">대출 불필요</span>`;
     else if (!state.loans.length) verdict = `<span class="pill info">대출 조건 입력 필요</span>`;
+    else if (!p.ok && !state.loans.some(isSub)) verdict = `<span class="pill warn">추가 조달 ${won(p.short)}</span>`;
     else if (!p.ok) verdict = `<span class="pill bad">${won(p.short)} 부족</span>`;
     else if (!p.dsrOk) verdict = `<span class="pill bad">DSR 초과</span>`;
     else verdict = i === 0 ? `<span class="stamp">최적</span>` : `<span class="pill good">가능</span>`;
     h += `<tr class="${i===0 && x.feasible ? "best" : ""}"><td><b>${esc(x.buy.label)}</b></td>
       <td class="r num">${won(x.bc.price)}</td><td class="r num">${won(x.bc.extras)}</td>
       <td class="r num">${loanNeed ? won(x.need) : "0"}</td>
-      <td>${loanNeed && p.parts.length ? p.parts.map(q => `<div>${partName(q)} <span class="hint">${pct(q.c.rate)}</span></div>`).join("") : "-"}</td>
+      <td>${loanNeed ? p.parts.map(q => `<div>${partName(q)} <span class="hint">${pct(q.c.rate)}</span></div>`).join("") + (p.short ? `<div class="hint">추가 조달 ${won(p.short)}</div>` : "") : "-"}</td>
       <td class="r num">${loanNeed && p.parts.length ? won(p.monthly) : "-"}</td>
       <td class="r num">${loanNeed && isFinite(p.dsr) ? pct(p.dsr,1) : "-"}</td>
       <td class="r num">${loanNeed ? won(p.cost) : "0"}</td>
@@ -442,7 +444,7 @@ function renderSummary(){
   if (top){
     const bc = top.bc;
     h += `<div class="cols2">
-      <div class="panel"><h3>${esc(top.buy.label)} · 돈 흐름</h3><div class="breakdown">
+      <div class="panel"><h3>${esc(top.buy.label)} · 돈 흐름</h3>${top.buy.note ? `<p class="hint" style="margin:4px 0 0">${esc(top.buy.note)}</p>` : ""}<div class="breakdown">
         <span>매도 순수령액</span><span class="num">${sc ? won(sc.net) : "0"}</span>
         <span>+ 보유 현금</span><span class="num">${won(cash)}</span>
         <span>− 매수가</span><span class="num">${won(bc.price)}</span>
@@ -452,6 +454,7 @@ function renderSummary(){
         <span>− 인테리어</span><span class="num">${won(bc.interior)}</span>
         <span>− 이사비</span><span class="num">${won(bc.moving)}</span>
         <span class="tot">${top.need > 0 ? "대출로 채울 금액" : "남는 돈"}</span><span class="num tot">${won(Math.abs(top.need))}</span>
+        ${top.need > 0 ? top.plan.parts.map(q => `<span>· ${esc(q.loan.kind||"주담대")} (${esc(q.loan.bank)})</span><span class="num">${won(q.c.amt)}</span>`).join("") + (top.plan.short ? `<span>· 주담대 후 추가 조달</span><span class="num">${won(top.plan.short)}</span>` : "") : ""}
       </div></div>
       <div class="panel"><h3>이 표를 읽는 법</h3><div class="guide hint" style="margin-top:8px">
         <p><b>총 부대비용</b>은 집값 자체를 뺀, 갈아타면서 사라지는 돈입니다. 같은 집값이면 이 숫자가 작은 쪽이 유리합니다.</p>
