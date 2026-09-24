@@ -94,7 +94,7 @@ ul.todo li span.t{flex:1}
     </div>
     <div class="row" style="justify-content:flex-end">
       <label class="who" for="who">입력하는 사람
-        <select id="who" style="width:auto"><option>나</option><option>남편</option></select>
+        <select id="who" style="width:auto"><option>경한</option><option>정현</option></select>
       </label>
       <span class="status" id="status">불러오는 중…</span>
     </div>
@@ -199,6 +199,7 @@ const SCHEMAS = {
   buys: { title:"매수 후보", addLabel:"매수 후보 추가", fields:[
     {k:"label", l:"단지 · 동 · 평형", t:"text", req:true},
     {k:"price", l:"매수가 (만원)", t:"num", req:true},
+    {k:"kb", l:"KB시세 (만원, 비우면 매수가)", t:"num", hint:"주담대 한도는 KB시세 기준"},
     {k:"over85", l:"전용 85㎡ 초과 (농특세 0.2%)", t:"chk"},
     {k:"brokerRate", l:"중개보수율 % (비우면 법정 상한)", t:"num"},
     {k:"interior", l:"인테리어 견적 (만원)", t:"num"},
@@ -207,7 +208,8 @@ const SCHEMAS = {
     {k:"date", l:"입주 가능일", t:"text"},
     {k:"note", l:"메모 (장단점, 협상 포인트)", t:"area"} ]},
   loans: { title:"대출 조건", addLabel:"은행 조건 추가", fields:[
-    {k:"bank", l:"은행", t:"text", req:true},
+    {k:"kind", l:"대출 종류", t:"sel", opts:["주담대","신용·기타"], hint:"주담대로 부족한 금액은 신용·기타 대출로 채워 계산"},
+    {k:"bank", l:"은행·대출자", t:"text", req:true},
     {k:"product", l:"상품명", t:"text"},
     {k:"type", l:"금리 방식", t:"sel", opts:["혼합형(5년 고정)","고정형","변동형","주기형"]},
     {k:"rate", l:"기본 금리 %", t:"num", req:true},
@@ -238,10 +240,11 @@ const SETTINGS_FIELDS = [
   {k:"dsrLimit", l:"DSR 한도 %", t:"num"},
   {k:"ltv", l:"LTV %", t:"num", hint:"지역·규제에 따라 다름"},
   {k:"cap", l:"주담대 절대한도 (만원)", t:"num", hint:"정부 대책상 상한, 은행 확인"},
+  {k:"roomDeduct", l:"방공제 (만원)", t:"num", hint:"소액임차보증금 공제. 과밀억제권역 4,800"},
   {k:"horizon", l:"비교 기간 (년)", t:"num", hint:"이 기간 이자+특약비용으로 비교"},
   {k:"vat", l:"중개보수에 부가세 10% 포함", t:"chk"},
 ];
-const DEFAULT_SETTINGS = {cash:"", payoff:"", payoffFee:"", income:"", otherDebt:"", stress:"1.5", dsrLimit:"40", ltv:"70", cap:"60000", horizon:"5", vat:true};
+const DEFAULT_SETTINGS = {cash:"", payoff:"", payoffFee:"", income:"", otherDebt:"", stress:"1.5", dsrLimit:"40", ltv:"70", cap:"60000", roomDeduct:"", horizon:"5", vat:true};
 
 // ---------- state & storage ----------
 const state = { sells:[], buys:[], loans:[], comps:[], todos:[], settings:{...DEFAULT_SETTINGS}, pickedSell:null };
@@ -252,7 +255,7 @@ const editing = {}; // coll -> id|"new"
 const confirmDel = {};
 
 const whoSel = $("#who");
-whoSel.value = ls.get("who") || "나";
+whoSel.value = ls.get("who") || "경한";
 whoSel.addEventListener("change", () => ls.set("who", whoSel.value));
 
 function setStatus(t){ $("#status").textContent = t; }
@@ -298,26 +301,53 @@ function buyCalc(b){
   const extras = tax.amount + br.fee + legal + interior + moving;
   return {price, tax, broker:br, legal, interior, moving, extras, total: price + extras};
 }
-function loanCalc(loan, need, price){
+const isSub = l => l.kind === "신용·기타";
+function mainLimit(loan, base){
   const S = state.settings;
-  const rate = n(loan.rate) - n(loan.discount);
-  const years = n(loan.years) || 30;
-  const H = Math.max(1, n(S.horizon) || 5);
-  const limits = [price * (n(S.ltv)||70)/100];
+  const limits = [Math.max(0, base * (has(S.ltv) ? n(S.ltv) : 70)/100 - n(S.roomDeduct))];
   if (has(S.cap)) limits.push(n(S.cap));
   if (has(loan.max)) limits.push(n(loan.max));
-  const maxAmt = Math.min(...limits);
-  const amt = Math.max(0, need);
+  return Math.min(...limits);
+}
+function loanCost(loan, amt){
+  const S = state.settings;
+  const rate = n(loan.rate) - n(loan.discount);
+  const years = n(loan.years) || (isSub(loan) ? 5 : 30);
+  const H = Math.max(1, n(S.horizon) || 5);
   const monthly = payment(amt, rate, years);
-  const stressMonthly = payment(amt, rate + n(S.stress), years);
-  const income = n(S.income);
-  const dsr = income > 0 ? (stressMonthly*12 + n(S.otherDebt)) / income * 100 : NaN;
+  const stressMonthly = payment(amt, rate + (isSub(loan) ? 0 : n(S.stress)), years);
   const interest = interestPaid(amt, rate, years, H*12);
-  const cond = n(loan.condCost) * 12 * H;
-  const cost = interest + cond;
-  const limitOk = amt <= maxAmt + 0.5;
-  const dsrOk = !isFinite(dsr) || dsr <= (n(S.dsrLimit)||40);
-  return {rate, years, amt, maxAmt, monthly, dsr, interest, cond, cost, limitOk, dsrOk, H};
+  const cond = amt > 0 ? n(loan.condCost) * 12 * H : 0;
+  return {rate, years, amt, monthly, stressMonthly, interest, cond, cost: interest + cond, H};
+}
+// 주담대를 한도까지 쓰고, 모자라면 신용·기타 대출로 채우는 조합 중 가장 싼 것
+function financing(need, base){
+  const S = state.settings;
+  if (need <= 0) return {need, parts:[], ok:true, cost:0, monthly:0, dsr:NaN};
+  const mains = state.loans.filter(l => !isSub(l)), subs = state.loans.filter(isSub);
+  const plans = [];
+  const tryMain = m => {
+    const lim = m ? mainLimit(m, base) : 0;
+    const mainAmt = Math.min(need, lim);
+    const rest = need - mainAmt;
+    const parts = m && mainAmt > 0 ? [{loan:m, c:loanCost(m, mainAmt), limit:lim}] : [];
+    if (rest <= 0.5){ plans.push({parts, ok:true}); return; }
+    const fits = subs.filter(x => !has(x.max) || n(x.max) >= rest - 0.5).map(x => ({loan:x, c:loanCost(x, rest), limit: has(x.max) ? n(x.max) : Infinity}));
+    fits.sort((a,b) => a.c.cost - b.c.cost);
+    if (fits[0]) plans.push({parts:[...parts, fits[0]], ok:true});
+    else plans.push({parts, ok:false, short: rest});
+  };
+  if (mains.length) mains.forEach(tryMain); else tryMain(null);
+  plans.forEach(p => {
+    p.cost = p.parts.reduce((a,x) => a + x.c.cost, 0);
+    p.monthly = p.parts.reduce((a,x) => a + x.c.monthly, 0);
+    const inc = n(S.income);
+    p.dsr = inc > 0 ? (p.parts.reduce((a,x) => a + x.c.stressMonthly, 0)*12 + n(S.otherDebt)) / inc * 100 : NaN;
+    p.dsrOk = !isFinite(p.dsr) || p.dsr <= (n(S.dsrLimit) || 40);
+    p.need = need;
+  });
+  plans.sort((a,b) => (b.ok && b.dsrOk) - (a.ok && a.dsrOk) || a.cost - b.cost);
+  return plans[0] || {need, parts:[], ok:false, short:need, cost:0, monthly:0, dsr:NaN, dsrOk:true};
 }
 function bestSell(){
   if (!state.sells.length) return null;
@@ -332,15 +362,12 @@ function combos(){
   return state.buys.map(b => {
     const bc = buyCalc(b);
     const need = bc.total - sellNet - cash;
-    const opts = state.loans.map(l => ({loan:l, c:loanCalc(l, need, bc.price)}));
-    const ok = opts.filter(o => o.c.limitOk && o.c.dsrOk);
-    const pool = ok.length ? ok : opts;
-    pool.sort((a,b) => a.c.cost - b.c.cost);
-    const best = pool[0] || null;
-    const moveCost = bc.extras + (best && need > 0 ? best.c.cost : 0);
-    return {buy:b, bc, need, best, feasible: need <= 0 || ok.length > 0, moveCost};
+    const plan = financing(need, has(b.kb) ? n(b.kb) : bc.price);
+    const feasible = need <= 0 || (plan.ok && plan.dsrOk);
+    return {buy:b, bc, need, plan, feasible, moveCost: bc.extras + (need > 0 ? plan.cost : 0)};
   }).sort((a,b) => (b.feasible - a.feasible) || (a.moveCost - b.moveCost));
 }
+const partName = p => `${esc(p.loan.bank)} ${won(p.c.amt)}`;
 
 // ---------- rendering ----------
 function render(){
@@ -383,7 +410,7 @@ function renderSummary(){
   let h = `<div class="tiles">
     <div class="tile"><div class="k">매도 후 손에 남는 돈</div><div class="v">${sc ? won(sc.net) : "-"}</div><div class="d">${sell ? esc(sell.label)+" 기준" : "매도 탭에서 매도가를 넣어 주세요"}</div></div>
     <div class="tile"><div class="k">보유 현금</div><div class="v">${won(cash)}</div><div class="d">우리 정보 탭에서 수정</div></div>
-    <div class="tile"><div class="k">가장 유리한 조합</div><div class="v" style="font-size:16px;font-family:var(--sans)">${top ? esc(top.buy.label) : "-"}</div><div class="d">${top && top.best ? esc(top.best.loan.bank)+" · 월 "+won(top.best.c.monthly) : (top && top.need<=0 ? "대출 없이 가능" : "")}</div></div>
+    <div class="tile"><div class="k">가장 유리한 조합</div><div class="v" style="font-size:16px;font-family:var(--sans)">${top ? esc(top.buy.label) : "-"}</div><div class="d">${top && top.need > 0 && top.plan.parts.length ? "월 상환 "+won(top.plan.monthly) : (top && top.need<=0 ? "대출 없이 가능" : "")}</div></div>
     <div class="tile"><div class="k">${esc(S.horizon||5)}년간 갈아타기 부대비용</div><div class="v">${top ? won(top.moveCost) : "-"}</div><div class="d">세금·복비·인테리어·이자·특약비 합계</div></div>
   </div>`;
   if (state.sells.length > 1){
@@ -395,19 +422,20 @@ function renderSummary(){
   <div class="scroll"><table><thead><tr><th>매수 후보</th><th class="r">매수가</th><th class="r">부대비용</th><th class="r">필요 대출</th><th>추천 대출</th><th class="r">월 상환</th><th class="r">DSR(스트레스)</th><th class="r">${esc(S.horizon||5)}년 이자+특약비</th><th class="r">총 부대비용</th><th>판정</th></tr></thead><tbody>`;
   if (!list.length) h += `<tr><td colspan="10" class="hint">매수 후보를 추가하면 여기에서 비교됩니다.</td></tr>`;
   list.forEach((x,i) => {
-    const b = x.best, c = b && b.c;
+    const p = x.plan, loanNeed = x.need > 0;
     let verdict;
-    if (x.need <= 0) verdict = `<span class="pill good">대출 불필요</span>`;
+    if (!loanNeed) verdict = `<span class="pill good">대출 불필요</span>`;
     else if (!state.loans.length) verdict = `<span class="pill info">대출 조건 입력 필요</span>`;
-    else if (!x.feasible) verdict = !c.limitOk ? `<span class="pill bad">한도 부족 ${won(x.need - c.maxAmt)}</span>` : `<span class="pill bad">DSR 초과</span>`;
+    else if (!p.ok) verdict = `<span class="pill bad">${won(p.short)} 부족</span>`;
+    else if (!p.dsrOk) verdict = `<span class="pill bad">DSR 초과</span>`;
     else verdict = i === 0 ? `<span class="stamp">최적</span>` : `<span class="pill good">가능</span>`;
     h += `<tr class="${i===0 && x.feasible ? "best" : ""}"><td><b>${esc(x.buy.label)}</b></td>
       <td class="r num">${won(x.bc.price)}</td><td class="r num">${won(x.bc.extras)}</td>
-      <td class="r num">${x.need > 0 ? won(x.need) : "0"}</td>
-      <td>${x.need > 0 && b ? esc(b.loan.bank)+" <span class='hint'>"+pct(c.rate)+"</span>" : "-"}</td>
-      <td class="r num">${x.need > 0 && c ? won(c.monthly) : "-"}</td>
-      <td class="r num">${x.need > 0 && c && isFinite(c.dsr) ? pct(c.dsr,1) : "-"}</td>
-      <td class="r num">${x.need > 0 && c ? won(c.cost) : "0"}</td>
+      <td class="r num">${loanNeed ? won(x.need) : "0"}</td>
+      <td>${loanNeed && p.parts.length ? p.parts.map(q => `<div>${partName(q)} <span class="hint">${pct(q.c.rate)}</span></div>`).join("") : "-"}</td>
+      <td class="r num">${loanNeed && p.parts.length ? won(p.monthly) : "-"}</td>
+      <td class="r num">${loanNeed && isFinite(p.dsr) ? pct(p.dsr,1) : "-"}</td>
+      <td class="r num">${loanNeed ? won(p.cost) : "0"}</td>
       <td class="r num"><b>${won(x.moveCost)}</b></td><td>${verdict}</td></tr>`;
   });
   h += `</tbody></table></div></div>`;
@@ -467,18 +495,27 @@ function renderLoans(){
   const top = combos()[0];
   const need = top ? top.need : 0, price = top ? top.bc.price : 0;
   let h = `<div><h2>대출 조건</h2><p class="sub">은행 상담 때 받은 금리·우대조건·한도를 그대로 적으세요. ${top && need > 0 ? `아래 계산은 <b>${esc(top.buy.label)}</b> 기준 필요 대출 <b>${won(need)}</b>으로 합니다.` : "매수 후보를 넣으면 필요한 대출액 기준으로 계산됩니다."}</p></div>` + formHtml("loans");
-  const rows = state.loans.map(l => ({l, c: loanCalc(l, need, price)})).sort((a,b) => a.c.cost - b.c.cost);
-  h += `<div class="panel scroll"><table><thead><tr><th>은행 · 상품</th><th>방식</th><th class="r">기본 → 적용 금리</th><th>특약·우대 조건</th><th class="r">특약비용</th><th class="r">한도</th><th class="r">월 상환</th><th class="r">${esc(S.horizon||5)}년 이자+특약비</th><th class="r">중도상환</th><th>판정</th><th></th></tr></thead><tbody>`;
-  if (!rows.length) h += `<tr><td colspan="11" class="hint">아직 대출 조건이 없어요.</td></tr>`;
-  rows.forEach(({l,c},i) => {
-    const v = need <= 0 ? `<span class="pill info">필요 없음</span>` : !c.limitOk ? `<span class="pill bad">한도 부족</span>` : !c.dsrOk ? `<span class="pill bad">DSR ${pct(c.dsr,0)}</span>` : i===0 ? `<span class="stamp">최저비용</span>` : `<span class="pill good">가능</span>`;
-    h += `<tr class="${i===0 && need>0 && c.limitOk && c.dsrOk ? "best":""}"><td><b>${esc(l.bank)}</b><div class="hint">${esc(l.product)}</div>${byLine(l)}</td><td>${esc(l.type)}<div class="hint">${esc(l.years||30)}년</div></td>
+  const base = top ? (has(top.buy.kb) ? n(top.buy.kb) : price) : 0;
+  const used = new Set(top && need > 0 ? top.plan.parts.map(q => q.loan.id) : []);
+  const mainUsed = top && top.plan.parts.find(q => !isSub(q.loan));
+  const rest = Math.max(0, need - (mainUsed ? mainUsed.c.amt : 0));
+  const rows = state.loans.map(l => {
+    const limit = isSub(l) ? (has(l.max) ? n(l.max) : Infinity) : mainLimit(l, base);
+    const amt = isSub(l) ? rest : Math.min(Math.max(0, need), limit);
+    return {l, limit, c: loanCost(l, amt)};
+  }).sort((a,b) => isSub(a.l) - isSub(b.l) || a.c.cost - b.c.cost);
+  h += `<div class="panel scroll"><table><thead><tr><th>종류</th><th>은행 · 상품</th><th>방식</th><th class="r">기본 → 적용 금리</th><th>특약·우대 조건</th><th class="r">특약비용</th><th class="r">한도</th><th class="r">이 대출로 빌릴 금액</th><th class="r">월 상환</th><th class="r">${esc(S.horizon||5)}년 이자+특약비</th><th class="r">중도상환</th><th>판정</th><th></th></tr></thead><tbody>`;
+  if (!rows.length) h += `<tr><td colspan="13" class="hint">아직 대출 조건이 없어요.</td></tr>`;
+  rows.forEach(({l,limit,c}) => {
+    const sub = isSub(l);
+    const v = need <= 0 ? `<span class="pill info">필요 없음</span>` : used.has(l.id) ? `<span class="stamp">추천</span>` : sub && rest > limit ? `<span class="pill bad">한도 부족</span>` : `<span class="pill good">대안</span>`;
+    h += `<tr class="${used.has(l.id) ? "best":""}"><td><span class="pill ${sub?"warn":"info"}">${esc(l.kind||"주담대")}</span></td><td><b>${esc(l.bank)}</b><div class="hint">${esc(l.product)}</div>${byLine(l)}</td><td>${esc(l.type)}<div class="hint">${esc(c.years)}년</div></td>
     <td class="r num">${pct(n(l.rate))} → <b>${pct(c.rate)}</b></td><td class="note">${esc(l.conditions)}${l.note?`<div>${esc(l.note)}</div>`:""}</td>
-    <td class="r num">${n(l.condCost) ? won(n(l.condCost))+"/월" : "-"}</td><td class="r num">${won(c.maxAmt)}</td>
-    <td class="r num">${need>0 ? won(c.monthly) : "-"}</td><td class="r num"><b>${need>0 ? won(c.cost) : "-"}</b></td>
+    <td class="r num">${n(l.condCost) ? won(n(l.condCost))+"/월" : "-"}</td><td class="r num">${isFinite(limit) ? won(limit) : "-"}</td>
+    <td class="r num">${c.amt > 0 ? won(c.amt) : "-"}</td><td class="r num">${c.amt>0 ? won(c.monthly) : "-"}</td><td class="r num"><b>${c.amt>0 ? won(c.cost) : "-"}</b></td>
     <td class="r num">${has(l.prepay) ? pct(n(l.prepay),1) : "-"}</td><td>${v}</td><td>${actions("loans", l)}</td></tr>`;
   });
-  h += `</tbody></table></div><p class="hint">한도는 은행 제시 한도, 매수가 × LTV, 절대한도 중 가장 작은 값입니다. 우대금리를 받으려는 조건(급여이체, 카드 실적, 적금 가입 등)에 드는 월 비용을 꼭 적어야 공정하게 비교돼요.</p>`;
+  h += `</tbody></table></div><p class="hint">주담대 한도는 은행 제시 한도, (KB시세 × LTV − 방공제), 절대한도 중 가장 작은 값입니다. 주담대로 모자란 금액은 신용·기타 대출 중 가장 싼 것으로 채워 계산합니다. 우대금리를 받으려는 조건(급여이체, 카드 실적, 적금 가입 등)에 드는 월 비용을 꼭 적어야 공정하게 비교돼요.</p>`;
   return h;
 }
 function renderComps(){
