@@ -320,7 +320,7 @@ const SETTINGS_FIELDS = [
 const DEFAULT_SETTINGS = {cash:"", payoff:"", payoffFee:"", income:"", otherDebt:"", stress:"1.5", dsrLimit:"40", ltv:"40", cap:"60000", roomDeduct:"", horizon:"5", vat:true, qInterior:"3000", qMoving:"255", qLegal:"487", subA:"", subB:"", subRate:"", creditRate:"", moveDate:""};
 
 // ---------- 상태·저장 ----------
-const state = { sells:[], buys:[], loans:[], comps:[], todos:[], news:[], settings:{...DEFAULT_SETTINGS} };
+const state = { sells:[], buys:[], loans:[], comps:[], todos:[], news:[], kbhist:[], settings:{...DEFAULT_SETTINGS} };
 let db = null, shared = false, readOnly = false;
 const local = { sells:{}, buys:{}, loans:{}, comps:{}, todos:{} };
 let tab = ls.get("tab2") || "home";
@@ -720,6 +720,8 @@ function renderLoans(){
   return h;
 }
 const openGroups = new Set();
+const kbHistFor = key => { const h = state.kbhist.find(x => groupKey(x.complex, x.area) === key); return h && Array.isArray(h.rows) ? h.rows : null; };
+const ymDate = ym => new Date(+ym.slice(0,4), +ym.slice(4,6), 0).getTime(); // 해당 월 말일
 const chartSel = new Map();
 function trendChart(key, real, kb){
   const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear()-1);
@@ -727,7 +729,8 @@ function trendChart(key, real, kb){
     .map(r => ({t: new Date(r.date).getTime(), v: n(r.price), r})).sort((a,b) => a.t - b.t || a.v - b.v);
   if (pts.length < 2) return "";
   const W = 320, H = 170, L = 38, R = 58, T = 14, B = 22;
-  const vals = pts.map(p => p.v).concat(kb ? [kb] : []);
+  const hist = (kbHistFor(key) || []).map(r => ({t: ymDate(r.ym), v: r.mid})).filter(h => h.t >= pts[0].t - 31*864e5 && h.t <= Date.now() + 31*864e5);
+  const vals = pts.map(p => p.v).concat(kb ? [kb] : []).concat(hist.map(h => h.v));
   let lo = Math.min(...vals), hi = Math.max(...vals); const pad = Math.max(500, (hi-lo)*0.12); lo -= pad; hi += pad;
   const step = [1000, 2500, 5000, 10000].find(s => (hi-lo)/s <= 4) || 20000;
   const ticks = []; for (let v = Math.ceil(lo/step)*step; v <= hi; v += step) ticks.push(v);
@@ -738,7 +741,10 @@ function trendChart(key, real, kb){
   const sp = pts[sel];
   let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="최근 1년 실거래가 추이" style="display:block;max-width:100%;touch-action:manipulation">`;
   ticks.forEach(v => { svg += `<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" font-size="10" fill="var(--muted)">${(v/10000).toFixed(v%10000?1:0)}억</text>`; });
-  if (kb) svg += `<line x1="${L}" x2="${W-R}" y1="${Y(kb)}" y2="${Y(kb)}" stroke="var(--sub)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="${W-R+4}" y="${Y(kb)+4}" font-size="10" fill="var(--sub)">KB ${eok(kb)}</text>`;
+  if (hist.length >= 2){
+    const hp = hist.map(h => ({x: Math.min(W-R, Math.max(L, X(h.t))), y: Y(h.v)}));
+    svg += `<polyline points="${hp.map(q => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")}" fill="none" stroke="var(--pink)" stroke-width="2" stroke-dasharray="5 3" stroke-linejoin="round"/><text x="${W-R+4}" y="${hp[hp.length-1].y+4}" font-size="10" fill="var(--pink)">KB ${eok(hist[hist.length-1].v)}</text>`;
+  } else if (kb) svg += `<line x1="${L}" x2="${W-R}" y1="${Y(kb)}" y2="${Y(kb)}" stroke="var(--sub)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="${W-R+4}" y="${Y(kb)+4}" font-size="10" fill="var(--sub)">KB ${eok(kb)}</text>`;
   svg += `<line x1="${X(sp.t)}" x2="${X(sp.t)}" y1="${T}" y2="${H-B}" stroke="var(--blue)" stroke-width="1" stroke-opacity=".4"/>`;
   const gid = "g" + Math.abs([...key].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7));
   const line = pts.map(p => `${X(p.t).toFixed(1)},${Y(p.v).toFixed(1)}`).join(" ");
@@ -754,7 +760,7 @@ function trendChart(key, real, kb){
   });
   svg += `</svg>`;
   const vsKb = kb ? ((sp.v/kb - 1)*100) : NaN;
-  return `<div><div class="small">최근 1년 실거래 ${pts.length}건 · 그래프를 눌러 거래를 골라 보세요</div>${svg}
+  return `<div><div class="small">최근 1년 실거래 ${pts.length}건${hist.length >= 2 ? " · 분홍 점선은 월별 KB시세" : ""} · 그래프를 눌러 거래를 골라 보세요</div>${svg}
     <div class="funding" style="padding:10px 14px"><span class="label">${esc(sp.r.date)} · ${esc(sp.r.floor||"")}${isFinite(vsKb) ? ` · KB 대비 ${vsKb>=0?"+":""}${vsKb.toFixed(1)}%` : ""}</span><span class="v" style="font-size:18px">${eok(sp.v)}</span></div></div>`;
 }
 function compRow(r){
@@ -796,14 +802,19 @@ function renderTodo(){
 }
 
 // ---------- 분석 탭 ----------
-function monthlyGrowth(key){ // 최근 12개월 실거래 선형회귀 → 월 상승률 %
+function monthlyGrowth(key){
+  const h = kbHistFor(key);
+  if (h && h.length >= 7){ const a = h[h.length-7].mid, b = h[h.length-1].mid; return {g: (Math.pow(b/a, 1/6)-1)*100, count: 6, src: "KB 6개월"}; }
+  return monthlyGrowthReal(key);
+}
+function monthlyGrowthReal(key){ // 최근 12개월 실거래 선형회귀 → 월 상승률 %
   const cutoff = Date.now() - 365*864e5;
   const pts = marketRefs(key).real.filter(r => /^\d{4}-\d{2}-\d{2}/.test(r.date||"")).map(r => ({t: new Date(r.date).getTime(), v: n(r.price)})).filter(p => p.t >= cutoff);
   if (pts.length < 4) return {g: NaN, count: pts.length};
   const mt = pts.reduce((a,p)=>a+p.t,0)/pts.length, mv = pts.reduce((a,p)=>a+p.v,0)/pts.length;
   const slope = pts.reduce((a,p)=>a+(p.t-mt)*(p.v-mv),0) / pts.reduce((a,p)=>a+(p.t-mt)**2,0); // 만원/ms
   const days = (Math.max(...pts.map(p=>p.t)) - Math.min(...pts.map(p=>p.t)))/864e5;
-  return {g: slope*30.4*864e5/mv*100, count: pts.length, days: Math.round(days)};
+  return {g: slope*30.4*864e5/mv*100, count: pts.length, days: Math.round(days), src: `실거래 ${pts.length}건`};
 }
 const SELL_KEY = () => { const k = state.comps.filter(c => (c.side||"") === "우리집(매도)" && /23평/.test(c.area||"")).map(c => groupKey(c.complex, c.area))[0]; return k || "현암마을동성2차 23평"; };
 const wait = { buyId: ls.get("waitBuy") || "", gBuy: null, gSell: null, dRate: 0.5, months: null };
@@ -844,8 +855,8 @@ function renderAnalysis(){
       <div class="small">${better === "지금" ? "지금 사는 쪽이 유리해요" : "기다리는 쪽이 유리해요"} · 집값 차이 ${r.dNeed>=0?"+":""}${won(r.dNeed,false)}, 이자 차이 ${r.dInt>=0?"+":""}${won(r.dInt,false)} (${esc(S().horizon||5)}년)</div></div>
       <div class="funding"><span class="label">손익분기: 이 매물이 월</span><span class="v blue">${be.toFixed(1)}%</span></div>
       <div class="small" style="padding:0 4px">이보다 빨리 오르면 기다리는 게 손해, 느리면 이득 (우리 집 월 ${gS}% 상승·금리 ${dRate}%p 인하 가정)</div>
-      <div class="field"><div class="rowkv"><span class="k">이 매물 월 상승률 ${isFinite(gb.g) ? `<span class="small">(최근 ${gb.count}건 추세 ${gb.g.toFixed(1)}%)</span>` : ""}</span><span class="v" id="w-gb-l">${gB}%</span></div><input type="range" id="w-gb" min="-2" max="5" step="0.1" value="${gB}"></div>
-      <div class="field"><div class="rowkv"><span class="k">우리 집 월 상승률 ${isFinite(gs.g) ? `<span class="small">(최근 ${gs.count}건 추세 ${gs.g.toFixed(1)}%)</span>` : ""}</span><span class="v" id="w-gs-l">${gS}%</span></div><input type="range" id="w-gs" min="-2" max="5" step="0.1" value="${gS}"></div>
+      <div class="field"><div class="rowkv"><span class="k">이 매물 월 상승률 ${isFinite(gb.g) ? `<span class="small">(${gb.src} 추세 ${gb.g.toFixed(1)}%)</span>` : ""}</span><span class="v" id="w-gb-l">${gB}%</span></div><input type="range" id="w-gb" min="-2" max="5" step="0.1" value="${gB}"></div>
+      <div class="field"><div class="rowkv"><span class="k">우리 집 월 상승률 ${isFinite(gs.g) ? `<span class="small">(${gs.src} 추세 ${gs.g.toFixed(1)}%)</span>` : ""}</span><span class="v" id="w-gs-l">${gS}%</span></div><input type="range" id="w-gs" min="-2" max="5" step="0.1" value="${gS}"></div>
       <div class="field"><div class="rowkv"><span class="k">그때까지 금리 인하</span><span class="v" id="w-dr-l">${dRate}%p</span></div><input type="range" id="w-dr" min="0" max="1.5" step="0.1" value="${dRate}"></div>
       <div class="field"><div class="rowkv"><span class="k">기다리는 기간</span><span class="v" id="w-m-l">${months}개월</span></div><input type="range" id="w-m" min="1" max="12" step="1" value="${months}"></div>
       <div class="details">
@@ -884,6 +895,8 @@ function renderSellAnalysis(){
     <div class="stats"><div class="stat"><div class="k">최근 실거래</div><div class="v">${r.last ? eok(n(r.last.price)) : "-"}</div></div>
       <div class="stat"><div class="k">3개월 평균</div><div class="v">${isFinite(avg3) ? eok(avg3) : "-"}</div></div>
       <div class="stat"><div class="k">최고 실거래</div><div class="v">${isFinite(maxReal) ? eok(maxReal) : "-"}</div></div></div>
+    ${(() => { const h = kbHistFor(key); if (!h || h.length < 13) return ""; const now = h[h.length-1], y1 = h[h.length-13];
+      return `<div class="stats"><div class="stat"><div class="k">KB 1년 상승</div><div class="v">+${((now.mid/y1.mid-1)*100).toFixed(0)}%</div></div><div class="stat"><div class="k">KB 상위평균</div><div class="v">${eok(now.high)}</div></div><div class="stat"><div class="k">전세가율</div><div class="v">${Math.round(now.jeonse/now.mid*100)}%</div></div></div>`; })()}
     ${trendChart(key, r.real, r.kb)}
     <div class="small">경쟁 호가: ${asks.length ? asks.map(eok).join(" · ") : "없음"}</div>
     <div class="small">사는 사람 대출 = KB ${eok(kb)}${kbProxy ? "(KB 미입력, 3개월 평균 실거래로 대신)" : ""} × ${esc(S().ltv)}% − ${won(n(S().roomDeduct),false)}. 이 돈 말고는 현금으로 내야 해서, 필요 현금이 클수록 살 수 있는 사람이 줄어요.</div>
@@ -1020,7 +1033,7 @@ render();
     const u = await window.claude.use("user");
     if (u && typeof u.can === "function" && (await u.can("data.write")) === false){ readOnly = true; banner("보기 전용으로 열렸어요. 수정하려면 '편집 가능' 권한이 필요해요."); }
   } catch(e){}
-  ["sells","buys","loans","comps","todos","news"].forEach(coll => {
+  ["sells","buys","loans","comps","todos","news","kbhist"].forEach(coll => {
     db.collection(coll).onSnapshot(snap => {
       state[coll] = snap.docs.map(d => ({id:d.id, ...d.data()}));
       render();
