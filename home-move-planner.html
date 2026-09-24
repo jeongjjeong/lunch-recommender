@@ -297,6 +297,8 @@ const SCHEMAS = {
 };
 const SETTINGS_FIELDS = [
   {k:"cash", l:"보유 자산 (현금·주식 등)", t:"won"},
+  {k:"ownBuyPrice", l:"지금 집 산 가격", t:"won"},
+  {k:"ownBuyDate", l:"지금 집 산 날 (YYYY-MM-DD)", t:"text"},
   {k:"payoff", l:"지금 집 대출 잔액", t:"won"},
   {k:"payoffFee", l:"지금 대출 중도상환수수료", t:"won"},
   {k:"income", l:"부부 합산 연소득", t:"won", hint:"DSR 계산용"},
@@ -894,7 +896,18 @@ function renderSellAnalysis(){
       <div class="s">사는 사람: 대출 ${won(buyerLoan,false)} · 필요 현금 약 <b>${won(buyerCash,false)}</b></div></div>
       <div class="r"><div class="t">${won(sellCalc(sl).net,false)}</div><div class="s">우리 순수령</div></div></div>`;
   }).join("");
+  const bp = n(S().ownBuyPrice), bd = S().ownBuyDate || "";
+  const ask = state.sells.length ? Math.max(...state.sells.map(x => n(x.price))) : 0;
+  const up = v => `+${((v/bp-1)*100).toFixed(0)}%`;
+  const bh = kbHistFor(key), kbAtBuy = bh && /^\d{4}-\d{2}/.test(bd) ? (bh.find(r => r.ym === bd.slice(0,4)+bd.slice(5,7)) || {}).mid : 0;
+  const gain = bp ? `<div class="card hero tight">
+      <div class="label">우리가 산 가격 ${bd ? "("+esc(bd.slice(0,7).replace("-","년 "))+"월)" : ""}</div>
+      <div class="big">${eok(bp)} → ${ask ? eok(ask) : "-"}</div>
+      <div class="small">호가 기준 ${ask ? up(ask) : "-"} · 최근 실거래 ${r.last ? eok(n(r.last.price))+" ("+up(n(r.last.price))+")" : "-"} · KB ${r.kb ? eok(r.kb)+" ("+up(r.kb)+")" : "-"}</div>
+      ${kbAtBuy ? `<div class="small">산 달 KB시세는 ${eok(kbAtBuy)}였어요 · 1세대1주택 2년 보유 충족, 12억 이하라 양도세 비과세 예상</div>` : ""}
+    </div>` : "";
   return `<div class="sec"><h2>우리 집 매도가 분석</h2><span class="small">${esc(key)}</span></div>
+  ${gain}
   <div class="card tight">
     <div class="stats"><div class="stat"><div class="k">최근 실거래</div><div class="v">${r.last ? eok(n(r.last.price)) : "-"}</div></div>
       <div class="stat"><div class="k">3개월 평균</div><div class="v">${isFinite(avg3) ? eok(avg3) : "-"}</div></div>
