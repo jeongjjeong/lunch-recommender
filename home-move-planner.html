@@ -32,7 +32,8 @@ header.top h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.02em}
 .who{appearance:none;border:0;background:var(--card);color:var(--ink);font:inherit;font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;width:auto}
 .iconbtn{border:0;background:var(--card);color:var(--sub);width:34px;height:34px;border-radius:50%;display:grid;place-items:center;cursor:pointer}
 .iconbtn svg{width:18px;height:18px}
-.card{background:var(--card);border-radius:20px;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+.app>*{min-width:0;max-width:100%}
+.card{min-width:0;background:var(--card);border-radius:20px;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
 .card.tight{gap:8px}
 .label{font-size:13px;color:var(--sub);font-weight:500}
 .big{font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1.2}
@@ -114,6 +115,24 @@ nav.tabbar button[aria-selected="true"]{color:var(--ink)}
 .sheet{background:var(--card);width:100%;max-width:600px;max-height:88%;overflow-y:auto;border-radius:24px 24px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
 .sheet h3{margin:0;font-size:20px;font-weight:800}
 .sheet .grip{width:40px;height:4px;border-radius:9px;background:var(--line);align-self:center}
+.gbar{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--field)}
+.gbar i{display:block;height:100%}
+.gbar .m{background:var(--blue)} .gbar .x{background:var(--red)}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.mx{overflow-x:auto;max-width:100%}
+.mx table{border-collapse:separate;border-spacing:4px;min-width:100%}
+.mx th{font-size:12px;color:var(--muted);font-weight:700;text-align:center;padding:4px;white-space:nowrap}
+.mx th.rh,.mx td.rh{position:sticky;left:0;z-index:1;background:var(--card);text-align:left;min-width:108px;max-width:130px;padding:6px 6px 6px 0}
+.mx td.rh .t{font-size:13px;font-weight:700;line-height:1.3}
+.mx td.rh .s{font-size:11px;color:var(--muted)}
+.mx td.c{border-radius:10px;padding:8px 6px;text-align:center;min-width:76px;white-space:nowrap}
+.mx td.c .a{font-size:14px;font-weight:800}
+.mx td.c .b{font-size:11px;font-weight:700}
+.mx td.ok{background:var(--green-soft)} .mx td.ok .b{color:var(--green)}
+.mx td.mid{background:var(--orange-soft)} .mx td.mid .b{color:var(--orange)}
+.mx td.bad{background:var(--red-soft)} .mx td.bad .b{color:var(--red)}
+.mx td.best{box-shadow:inset 0 0 0 2px var(--blue)}
 .empty{color:var(--muted);font-size:14px;text-align:center;padding:12px 0}
 @media (prefers-reduced-motion:no-preference){
   .sheet{animation:up .22s ease-out}
@@ -218,6 +237,7 @@ const SCHEMAS = {
     {k:"over85", l:"전용 85㎡ 초과", t:"chk"},
     {k:"note", l:"특징·메모", t:"area"} ]},
   loans: { title:"대출", fields:[
+    {k:"status", l:"상태", t:"sel", opts:["가능","확인 중","불가"], hint:"불가로 두면 계산에서 빠져요"},
     {k:"kind", l:"종류", t:"sel", opts:["주담대","신용·기타"]},
     {k:"bank", l:"은행·상품", t:"text", req:true},
     {k:"type", l:"금리 방식", t:"sel", opts:["혼합형(5년 고정)","주기형","고정형","변동형"]},
@@ -228,6 +248,7 @@ const SCHEMAS = {
     {k:"max", l:"은행 제시 한도", t:"won", hint:"비우면 KB시세 기준 자동 계산"},
     {k:"years", l:"기간 (년)", t:"num"},
     {k:"prepay", l:"중도상환수수료 %", t:"num"},
+    {k:"period", l:"심사·실행 기간", t:"text", ph:"예: 접수 후 6주"},
     {k:"note", l:"메모", t:"area"} ]},
   comps: { title:"시세", fields:[
     {k:"side", l:"구분", t:"sel", opts:["매수 후보","우리집(매도)"]},
@@ -259,7 +280,7 @@ const SETTINGS_FIELDS = [
 const DEFAULT_SETTINGS = {cash:"", payoff:"", payoffFee:"", income:"", otherDebt:"", stress:"1.5", dsrLimit:"40", ltv:"40", cap:"60000", roomDeduct:"", horizon:"5", vat:true, qInterior:"3000", qMoving:"255", qLegal:"487"};
 
 // ---------- 상태·저장 ----------
-const state = { sells:[], buys:[], loans:[], comps:[], todos:[], settings:{...DEFAULT_SETTINGS} };
+const state = { sells:[], buys:[], loans:[], comps:[], todos:[], news:[], settings:{...DEFAULT_SETTINGS} };
 let db = null, shared = false, readOnly = false;
 const local = { sells:{}, buys:{}, loans:{}, comps:{}, todos:{} };
 let tab = ls.get("tab2") || "home";
@@ -322,10 +343,11 @@ function loanCost(loan, amt){
     stressMonthly: payment(amt, rate + (isSub(loan) ? 0 : n(S().stress)), years),
     cost: interestPaid(amt, rate, years, H*12) + (amt > 0 ? n(loan.condCost)*12*H : 0)};
 }
-function financing(need, kb){
+const usable = l => l.status !== "불가";
+function financing(need, kb, only){
   const empty = {need, parts:[], short:0, cost:0, monthly:0, dsr:NaN, dsrOk:true, limit: mainLimit(null, kb)};
   if (need <= 0) return empty;
-  const mains = state.loans.filter(l => !isSub(l)), subs = state.loans.filter(isSub);
+  const mains = only ? [only] : state.loans.filter(l => !isSub(l) && usable(l)), subs = state.loans.filter(l => isSub(l) && usable(l));
   const plans = [];
   const tryMain = m => {
     const limit = mainLimit(m, kb), mainAmt = Math.min(need, limit), rest = need - mainAmt;
@@ -347,6 +369,19 @@ function financing(need, kb){
   });
   plans.sort((a,b) => a.short - b.short || (b.dsrOk - a.dsrOk) || a.cost - b.cost);
   return plans[0];
+}
+function bankCompare(x){ // 이 매물에서 은행별로 받으면
+  return state.loans.filter(l => !isSub(l)).map(l => ({loan:l, plan: financing(x.need, x.kb, l)}))
+    .sort((a,b) => usable(b.loan) - usable(a.loan) || a.plan.short - b.plan.short || a.plan.cost - b.plan.cost);
+}
+function bankRows(x, limit){
+  const rows = bankCompare(x), best = rows.find(r => usable(r.loan));
+  return rows.slice(0, limit || rows.length).map(r => {
+    const main = r.plan.parts.find(q => !isSub(q.loan)), off = !usable(r.loan);
+    return `<div class="li" style="${off?"opacity:.5":""}"><div><div class="t">${esc(r.loan.bank)} ${r===best?'<span class="badge blue">추천</span>':""}${off?'<span class="badge gray">불가</span>':r.loan.status==="확인 중"?'<span class="badge orange">확인 중</span>':""}</div>
+      <div class="s">${esc(r.loan.type||"")} · ${pct(n(r.loan.rate)-n(r.loan.discount),2)} · 대출 ${won(main?main.c.amt:0,false)} · 월 ${won(r.plan.monthly,false)}</div></div>
+      <div class="r"><div class="t ${r.plan.short>0?"red":"green"}">${r.plan.short>0 ? "+"+won(r.plan.short,false) : "추가 0"}</div><div class="s">추가 조달</div></div></div>`;
+  }).join("");
 }
 function currentSell(){
   if (!state.sells.length) return null;
@@ -412,6 +447,7 @@ function candCard(x, i){
       <div class="rowkv indent"><span class="k">주담대 한도 (KB ${eok(x.kb)} × ${esc(S().ltv)}% − ${won(n(S().roomDeduct),false)})</span><span class="v">${won(p.limit)}</span></div>
       ${p.parts.map(q => `<div class="rowkv indent"><span class="k">${esc(q.loan.bank)} ${pct(q.c.rate,2)} · ${q.c.years}년</span><span class="v">${won(q.c.amt)}</span></div>`).join("")}
       ${p.short ? `<div class="rowkv indent"><span class="k">추가 조달 (할 일 탭에서 계획)</span><span class="v red">${won(p.short)}</span></div>` : ""}
+      ${state.loans.some(l => !isSub(l)) && x.need > 0 ? `<div class="label" style="margin-top:6px">은행별로 받으면</div><div class="list">${bankRows(x)}</div>` : ""}
       ${b.note ? `<div class="note">${esc(b.note)}</div>` : ""}
       ${readOnly ? "" : `<div class="actions"><button class="btn sm" data-act="edit" data-coll="buys" data-id="${esc(b.id)}">수정</button></div>`}
     </div>`;
@@ -493,25 +529,65 @@ function renderHomes(){
   }
   return h;
 }
+let loanFor = ls.get("loanFor") || "";
+function loanOverview(list){
+  const maxNeed = Math.max(1, ...list.map(v => Math.max(0, v.need)));
+  return `<div class="card tight"><div class="mid" style="font-size:18px">집마다 대출 한눈에</div>
+    <div class="legend"><span><i style="background:var(--blue)"></i>주담대 (가장 유리한 은행)</span><span><i style="background:var(--red)"></i>추가 조달</span></div>
+    ${list.map(v => {
+      const main = v.plan.parts.find(q => !isSub(q.loan)), m = main ? main.c.amt : 0, x = v.plan.short || 0;
+      return `<div style="display:flex;flex-direction:column;gap:6px;padding-top:10px">
+        <div class="rowkv"><span class="k" style="color:var(--ink);font-weight:700">${esc(v.buy.label)}</span><span class="v ${x>0?"red":"green"}">${x>0 ? "+"+won(x) : "추가 0원"}</span></div>
+        <div class="gbar" style="width:${Math.max(8, Math.max(0,v.need)/maxNeed*100)}%"><i class="m" style="flex:${m}"></i><i class="x" style="flex:${x}"></i></div>
+        <div class="small">KB ${eok(v.kb)} → 한도 ${won(v.plan.limit,false)} · ${main ? esc(main.loan.bank)+" "+won(m,false)+" · 월 "+won(v.plan.monthly,false) : "대출 불필요"}</div></div>`;
+    }).join("")}</div>`;
+}
+function loanMatrix(list){
+  const banks = state.loans.filter(l => !isSub(l) && usable(l));
+  if (!banks.length) return "";
+  const score = l => list.reduce((a,v) => { const f = financing(v.need, v.kb, l); return a + f.short*1e3 + f.cost; }, 0);
+  banks.sort((a,b) => score(a) - score(b));
+  const off = state.loans.filter(l => !isSub(l) && !usable(l)).length;
+  const short = b => b.replace(/\(.*?\)/g,"").trim();
+  let h = `<div class="card tight"><div class="mid" style="font-size:18px">은행 × 집 비교</div>
+    <div class="small">칸마다 위는 대출 가능액, 아래는 추가 조달이에요. 파란 테두리가 그 집에서 가장 유리한 은행이에요.${off ? ` 불가 ${off}건 제외.` : ""}</div>
+    <div class="mx"><table><thead><tr><th class="rh"></th>${banks.map(l => `<th>${esc(short(l.bank))}${/\((.*?)\)/.test(l.bank) ? `<div style="font-weight:500">${esc(l.bank.match(/\((.*?)\)/)[1])}</div>` : ""}<div style="font-weight:500">${pct(n(l.rate)-n(l.discount),2)}${/변동/.test(l.type||"")?" 변동":""}</div></th>`).join("")}</tr></thead><tbody>`;
+  list.forEach(v => {
+    const cells = banks.map(l => financing(v.need, v.kb, l));
+    const bestI = cells.reduce((bi, c, i) => (c.short < cells[bi].short || (c.short === cells[bi].short && c.cost < cells[bi].cost)) ? i : bi, 0);
+    h += `<tr><td class="rh"><div class="t">${esc(v.buy.label)}</div><div class="s">KB ${eok(v.kb)}</div></td>${cells.map((c,i) => {
+      const main = c.parts.find(q => !isSub(q.loan)), amt = main ? main.c.amt : 0;
+      const cls = v.need <= 0 || c.short <= 0 ? "ok" : c.short < 5000 ? "mid" : "bad";
+      return `<td class="c ${cls} ${i===bestI && v.need>0?"best":""}"><div class="a">${eok(amt)}</div><div class="b">${v.need<=0 || c.short<=0 ? "추가 0" : "+"+won(c.short,false)}</div></td>`;
+    }).join("")}</tr>`;
+  });
+  return h + `</tbody></table></div></div>`;
+}
 function renderLoans(){
-  const s = S();
+  const s = S(), list = ranked();
+  const x = list.find(v => v.buy.id === loanFor) || list[0];
   let h = `<div class="card tight"><div class="label">주담대 한도 계산법</div>
     <div class="mid" style="font-size:18px">KB시세 × ${esc(s.ltv)}% − ${won(n(s.roomDeduct))}</div>
-    <div class="small">최대 ${won(n(s.cap))} · 은행 제시 한도가 더 낮으면 그 금액 · 모자란 돈은 할 일 탭에서 계획</div></div>
-    <div class="sec"><h2>은행별 조건</h2><span class="small">${state.loans.length}곳</span></div>`;
-  const top = ranked()[0];
-  h += state.loans.map(l => {
-    const amt = top ? Math.min(Math.max(0, top.need), mainLimit(l, top.kb)) : 0, c = loanCost(l, amt);
-    return `<div class="card tight">
-      <div class="cand-head"><div><div class="cand-name">${esc(l.bank)}</div><div class="small">${esc(l.kind||"주담대")} · ${esc(l.type||"")} · ${c.years}년</div></div>
-      <div style="text-align:right"><div class="mid">${pct(c.rate,2)}</div>${n(l.discount)?`<div class="small">기본 ${pct(n(l.rate),2)} − 우대 ${n(l.discount)}%p</div>`:""}</div></div>
-      ${top && amt ? `<div class="stats"><div class="stat"><div class="k">빌릴 금액</div><div class="v">${won(amt,false)}</div></div><div class="stat"><div class="k">월 상환</div><div class="v">${won(c.monthly,false)}</div></div><div class="stat"><div class="k">${esc(s.horizon||5)}년 이자</div><div class="v">${won(c.cost,false)}</div></div></div><div class="small">${esc(top.buy.label)} 기준</div>` : ""}
+    <div class="small">최대 ${won(n(s.cap))} · 은행 제시 한도가 더 낮으면 그 금액 · 모자란 돈은 할 일 탭에서 계획</div></div>`;
+  if (list.length) h += loanOverview(list) + loanMatrix(list);
+  h += `<div class="sec"><h2>은행별 조건</h2><span class="small">${state.loans.length}건</span></div>`;
+  h += state.loans.slice().sort((a,b) => usable(b) - usable(a) || (n(a.rate)-n(a.discount)) - (n(b.rate)-n(b.discount))).map(l => {
+    const off = !usable(l);
+    return `<div class="card tight" style="${off?"opacity:.6":""}">
+      <div class="cand-head"><div><div class="cand-name">${esc(l.bank)} ${off?'<span class="badge gray">불가</span>':l.status==="확인 중"?'<span class="badge orange">확인 중</span>':""}</div><div class="small">${esc(l.kind||"주담대")} · ${esc(l.type||"")} · ${n(l.years)||30}년</div></div>
+      <div style="text-align:right"><div class="mid">${pct(n(l.rate)-n(l.discount),2)}</div>${n(l.discount)?`<div class="small">기본 ${pct(n(l.rate),2)} − 우대 ${n(l.discount)}%p</div>`:""}</div></div>
+      <div class="rowkv"><span class="k">은행 제시 한도</span><span class="v">${has(l.max) ? won(n(l.max)) : "KB 기준 자동"}</span></div>
       ${l.conditions ? `<div class="rowkv"><span class="k">우대 조건</span><span class="v">${esc(l.conditions)}${n(l.condCost)?` (월 ${won(n(l.condCost))})`:""}</span></div>` : ""}
       ${has(l.prepay) ? `<div class="rowkv"><span class="k">중도상환수수료</span><span class="v">${pct(n(l.prepay),2)}</span></div>` : ""}
+      ${l.period ? `<div class="rowkv"><span class="k">심사·실행 기간</span><span class="v">${esc(l.period)}</span></div>` : ""}
       ${l.note ? `<div class="note">${esc(l.note)}</div>` : ""}
+      <div class="small">${l.by ? esc(l.by)+" 입력" : ""}</div>
       ${readOnly?"":`<div class="actions"><button class="btn sm" data-act="edit" data-coll="loans" data-id="${esc(l.id)}">수정</button></div>`}</div>`;
   }).join("");
   if (!readOnly) h += `<button class="add" data-act="new" data-coll="loans">+ 은행 상담 내용 추가</button>`;
+  const news = state.news.slice().sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  h += `<div class="sec"><h2>대출 소식</h2><span class="small">Claude가 매주 확인</span></div>
+    <div class="card tight">${news.length ? `<div class="list">${news.map(v => `<div class="li" style="align-items:flex-start"><div><div class="t">${esc(v.title)}</div><div class="s" style="white-space:pre-line">${esc(v.body)}</div><div class="s">${esc(v.date||"")}${/^https:\/\//.test(v.url||"") ? ` · <a href="${esc(v.url)}" target="_blank" rel="noopener" style="color:var(--blue)">출처</a>` : ""}</div></div></div>`).join("")}</div>` : `<div class="empty">아직 소식이 없어요</div>`}</div>`;
   return h;
 }
 function renderMarket(){
@@ -589,6 +665,7 @@ document.addEventListener("click", async e => {
   else if (act === "toggle"){ if (e.target.closest("button")) return; open.has(id) ? open.delete(id) : open.add(id); render(); }
   else if (act === "new") openSheet({coll});
   else if (act === "edit"){ e.stopPropagation(); openSheet({coll, id}); }
+  else if (act === "loanFor"){ loanFor = id; ls.set("loanFor", id); render(); }
   else if (act === "homesSeg"){ homesSeg = t.dataset.v; render(); }
   else if (act === "marketSeg"){ marketSeg = t.dataset.v; render(); }
   else if (act === "del"){
@@ -643,7 +720,7 @@ render();
     const u = await window.claude.use("user");
     if (u && typeof u.can === "function" && (await u.can("data.write")) === false){ readOnly = true; banner("보기 전용으로 열렸어요. 수정하려면 '편집 가능' 권한이 필요해요."); }
   } catch(e){}
-  ["sells","buys","loans","comps","todos"].forEach(coll => {
+  ["sells","buys","loans","comps","todos","news"].forEach(coll => {
     db.collection(coll).onSnapshot(snap => {
       state[coll] = snap.docs.map(d => ({id:d.id, ...d.data()}));
       render();
