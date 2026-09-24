@@ -1,147 +1,169 @@
 <title>우리집 갈아타기 계산기</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
 <style>
 :root{
-  --bg:#EEF1F4; --panel:#FFFFFF; --ink:#18212B; --muted:#5B6776; --line:#D5DBE2;
-  --accent:#2B3F8C; --accent-soft:#E2E7F6; --stamp:#B8322A; --stamp-soft:#F7E3E1;
-  --good:#1D7A4C; --good-soft:#DFF1E7; --warn:#9A6A00; --warn-soft:#FBF0D2;
-  --sans:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --bg:#F2F4F6; --card:#FFFFFF; --ink:#191F28; --sub:#4E5968; --muted:#8B95A1; --line:#E5E8EB; --field:#F2F4F6;
+  --blue:#3182F6; --blue-soft:#E8F3FF; --red:#F04452; --red-soft:#FFEEEE; --green:#03A866; --green-soft:#E5F8EF;
+  --orange:#F08C00; --orange-soft:#FFF4E5; --on-blue:#FFFFFF; --shadow:0 1px 2px rgba(0,27,55,.04);
+  --sans:"Noto Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   color-scheme:dark;
-  --bg:#12171D; --panel:#1B222B; --ink:#E6EAEF; --muted:#98A3B1; --line:#2D3743;
-  --accent:#9DB0F2; --accent-soft:#25304F; --stamp:#F08A80; --stamp-soft:#3E2322;
-  --good:#6FD19E; --good-soft:#1C3629; --warn:#E8C063; --warn-soft:#3A3018;
+  --bg:#101114; --card:#1C1D22; --ink:#F9FAFB; --sub:#B0B8C1; --muted:#6B7684; --line:#2C2E35; --field:#26282E;
+  --blue:#4B96FA; --blue-soft:#18293F; --red:#F66570; --red-soft:#3A1E22; --green:#2DC98C; --green-soft:#13302A;
+  --orange:#FFB443; --orange-soft:#3A2E17; --on-blue:#FFFFFF; --shadow:none;
 }}
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --bg:#12171D; --panel:#1B222B; --ink:#E6EAEF; --muted:#98A3B1; --line:#2D3743;
-  --accent:#9DB0F2; --accent-soft:#25304F; --stamp:#F08A80; --stamp-soft:#3E2322;
-  --good:#6FD19E; --good-soft:#1C3629; --warn:#E8C063; --warn-soft:#3A3018;
+  --bg:#101114; --card:#1C1D22; --ink:#F9FAFB; --sub:#B0B8C1; --muted:#6B7684; --line:#2C2E35; --field:#26282E;
+  --blue:#4B96FA; --blue-soft:#18293F; --red:#F66570; --red-soft:#3A1E22; --green:#2DC98C; --green-soft:#13302A;
+  --orange:#FFB443; --orange-soft:#3A2E17; --on-blue:#FFFFFF; --shadow:none;
 }
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55;padding-inline:16px;padding-block:20px 48px}
-.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
-h1{font-size:24px;margin:0;letter-spacing:-.02em;text-wrap:balance}
-h2{font-size:17px;margin:0;text-wrap:balance}
-h3{font-size:14px;margin:0}
-.sub{color:var(--muted);margin:2px 0 0;font-size:13px}
-.who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
-.status{font-size:12px;color:var(--muted)}
-nav{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
-nav button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;font:inherit;color:var(--muted);cursor:pointer;margin-bottom:-1px}
-nav button[aria-selected="true"]{color:var(--ink);border-color:var(--accent);font-weight:700}
-nav button:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-section.tab{display:flex;flex-direction:column;gap:16px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
-.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
-.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
-.tile .k{font-size:12px;color:var(--muted);letter-spacing:.02em}
-.tile .v{font-family:var(--mono);font-size:20px;font-weight:500;margin-top:4px}
-.tile .d{font-size:12px;color:var(--muted);margin-top:2px}
-.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-weight:500;color:var(--muted);font-size:12px;white-space:nowrap}
-td.r,th.r{text-align:right}
-tr.best td{background:var(--stamp-soft)}
-.pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;white-space:nowrap;font-weight:500}
-.pill.good{background:var(--good-soft);color:var(--good)}
-.pill.warn{background:var(--warn-soft);color:var(--warn)}
-.pill.bad{background:var(--stamp-soft);color:var(--stamp)}
-.pill.info{background:var(--accent-soft);color:var(--accent)}
-.stamp{display:inline-block;border:2px solid var(--stamp);color:var(--stamp);font-weight:700;font-size:11px;padding:0 6px;border-radius:4px;transform:rotate(-4deg);letter-spacing:.05em}
-button.btn{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer}
-button.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
-button.btn.danger{color:var(--stamp)}
-button.link{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;font-size:12px;padding:2px 4px}
-button.link.del{color:var(--stamp)}
-form.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 14px;margin-top:12px}
-label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
-label.f.wide{grid-column:1/-1}
-label.chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
-input,select,textarea{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
-input[type=checkbox]{width:auto}
-textarea{min-height:60px;resize:vertical}
-.hint{font-size:12px;color:var(--muted)}
-.formbar{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
-.note{font-size:12px;color:var(--muted);max-width:40ch;white-space:pre-line}
-.by{font-size:11px;color:var(--muted)}
-.cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
-ul.todo{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column}
-ul.todo li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
-ul.todo li.done span.t{color:var(--muted);text-decoration:line-through}
-ul.todo li span.t{flex:1}
-.guide{display:flex;flex-direction:column;gap:10px;max-width:72ch}
-.guide p{margin:0}
-.guide ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
-.banner{background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:8px 12px;font-size:13px}
-.breakdown{display:grid;grid-template-columns:1fr auto;gap:2px 16px;font-size:13px;margin-top:8px}
-.breakdown .tot{font-weight:700;border-top:1px solid var(--line);padding-top:4px}
-@media (prefers-reduced-motion:no-preference){nav button{transition:color .15s,border-color .15s}}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:0 calc(88px + env(safe-area-inset-bottom,0px));-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.app{max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:8px;padding-block:14px 8px}
+header.top h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.02em}
+.top-r{display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block}
+.dot.on{background:var(--green)}
+.who{appearance:none;border:0;background:var(--card);color:var(--ink);font:inherit;font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;width:auto}
+.iconbtn{border:0;background:var(--card);color:var(--sub);width:34px;height:34px;border-radius:50%;display:grid;place-items:center;cursor:pointer}
+.iconbtn svg{width:18px;height:18px}
+.card{background:var(--card);border-radius:20px;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+.card.tight{gap:8px}
+.label{font-size:13px;color:var(--sub);font-weight:500}
+.big{font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1.2}
+.mid{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.small{font-size:13px;color:var(--muted)}
+.sec{display:flex;align-items:baseline;justify-content:space-between;padding:12px 4px 0}
+.sec h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.02em}
+.red{color:var(--red)} .green{color:var(--green)} .blue{color:var(--blue)} .orange{color:var(--orange)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-inline:-4px;padding-inline:4px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:0;background:var(--field);color:var(--sub);font:inherit;font-size:14px;font-weight:700;padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--field);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;color:var(--muted);font:inherit;font-size:14px;font-weight:700;padding:8px;border-radius:9px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--field);border-radius:12px;padding:10px 12px;min-width:0}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:14px;font-weight:700;word-break:keep-all;line-height:1.35}
+.rowkv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px}
+.rowkv .k{color:var(--sub)}
+.rowkv .v{font-weight:700;text-align:right}
+.rowkv.total{border-top:1px solid var(--line);padding-top:10px;font-size:15px}
+.rowkv.indent .k{padding-left:10px;color:var(--muted)}
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap}
+.badge.blue{background:var(--blue-soft);color:var(--blue)}
+.badge.red{background:var(--red-soft);color:var(--red)}
+.badge.green{background:var(--green-soft);color:var(--green)}
+.badge.orange{background:var(--orange-soft);color:var(--orange)}
+.badge.gray{background:var(--field);color:var(--sub)}
+.cand{cursor:pointer}
+.cand-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.cand-name{font-size:17px;font-weight:800;letter-spacing:-.02em}
+.funding{display:flex;justify-content:space-between;align-items:center;background:var(--field);border-radius:14px;padding:14px 16px}
+.funding .v{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.bar{position:relative;height:8px;background:var(--field);border-radius:99px;overflow:visible}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--blue)}
+.bar i.over{background:var(--red)}
+.bar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.35}
+.details{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.note{font-size:14px;color:var(--sub);white-space:pre-line;background:var(--field);border-radius:12px;padding:12px 14px}
+.actions{display:flex;gap:8px}
+.btn{border:0;font:inherit;font-weight:700;font-size:15px;border-radius:14px;padding:13px 16px;cursor:pointer;background:var(--field);color:var(--ink);flex:1}
+.btn.primary{background:var(--blue);color:var(--on-blue)}
+.btn.danger{color:var(--red)}
+.btn.sm{font-size:13px;padding:8px 12px;border-radius:10px;flex:none}
+.add{border:1.5px dashed var(--line);background:none;color:var(--blue);font:inherit;font-weight:700;border-radius:16px;padding:14px;cursor:pointer}
+.list{display:flex;flex-direction:column}
+.li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:0}
+.li .t{font-weight:700;font-size:15px}
+.li .s{font-size:13px;color:var(--muted)}
+.li .r{text-align:right;flex:none}
+.li.click{cursor:pointer}
+.todo{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
+.todo:last-child{border-bottom:0}
+.todo input{width:22px;height:22px;accent-color:var(--blue);flex:none;margin-top:1px}
+.todo.done .tt{color:var(--muted);text-decoration:line-through}
+.todo .tt{flex:1;font-size:15px}
+.todo .by{font-size:12px;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>span{font-size:13px;color:var(--sub);font-weight:500}
+.field .hint{font-size:12px;color:var(--muted)}
+.field .conv{font-size:12px;color:var(--blue);font-weight:700;min-height:1em}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:1.5px solid transparent;border-radius:12px;padding:12px 14px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)}
+textarea{min-height:96px;resize:vertical}
+.chkrow{display:flex;align-items:center;gap:10px;font-size:15px}
+.chkrow input{width:22px;height:22px;accent-color:var(--blue)}
+button:focus-visible,.cand:focus-visible,.li.click:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.banner{background:var(--orange-soft);color:var(--orange);border-radius:14px;padding:12px 16px;font-size:14px;font-weight:500}
+nav.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabbar .in{max-width:600px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+nav.tabbar button{border:0;background:none;color:var(--muted);font:inherit;font-size:11px;font-weight:700;padding:8px 0 10px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+nav.tabbar button svg{width:22px;height:22px}
+nav.tabbar button[aria-selected="true"]{color:var(--ink)}
+.sheet-bg{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);width:100%;max-width:600px;max-height:88%;overflow-y:auto;border-radius:24px 24px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+.sheet h3{margin:0;font-size:20px;font-weight:800}
+.sheet .grip{width:40px;height:4px;border-radius:9px;background:var(--line);align-self:center}
+.empty{color:var(--muted);font-size:14px;text-align:center;padding:12px 0}
+@media (prefers-reduced-motion:no-preference){
+  .sheet{animation:up .22s ease-out}
+  @keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+}
 </style>
 
-<div class="wrap">
-  <header>
-    <div>
-      <h1>우리집 갈아타기 계산기</h1>
-      <p class="sub">파는 집 · 살 집 · 은행 대출을 한곳에 모아 두 사람이 같은 숫자를 봅니다. 금액 단위는 모두 <b>만원</b>입니다.</p>
-    </div>
-    <div class="row" style="justify-content:flex-end">
-      <label class="who" for="who">입력하는 사람
-        <select id="who" style="width:auto"><option>경한</option><option>정현</option></select>
-      </label>
-      <span class="status" id="status">불러오는 중…</span>
+<div class="app">
+  <header class="top">
+    <h1>우리집 갈아타기</h1>
+    <div class="top-r">
+      <span class="dot" id="dot" title="공유 상태"></span>
+      <select class="who" id="who" aria-label="입력하는 사람"><option>경한</option><option>정현</option></select>
+      <button class="iconbtn" id="gear" aria-label="우리 정보 설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </div>
   </header>
-
   <div id="banner" class="banner" hidden></div>
-
-  <nav role="tablist" id="tabs">
-    <button role="tab" data-tab="summary" aria-selected="true">한눈에 비교</button>
-    <button role="tab" data-tab="sells">매도</button>
-    <button role="tab" data-tab="buys">매수 후보</button>
-    <button role="tab" data-tab="loans">대출 조건</button>
-    <button role="tab" data-tab="comps">시세 기록</button>
-    <button role="tab" data-tab="plan">체크리스트</button>
-    <button role="tab" data-tab="settings">우리 정보</button>
-  </nav>
-
-  <section class="tab" id="tab-summary"></section>
-  <section class="tab" id="tab-sells" hidden></section>
-  <section class="tab" id="tab-buys" hidden></section>
-  <section class="tab" id="tab-loans" hidden></section>
-  <section class="tab" id="tab-comps" hidden></section>
-  <section class="tab" id="tab-plan" hidden></section>
-  <section class="tab" id="tab-settings" hidden></section>
+  <main id="main" class="app" style="gap:12px"></main>
 </div>
+
+<nav class="tabbar"><div class="in" role="tablist">
+  <button role="tab" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>한눈에</button>
+  <button role="tab" data-tab="homes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2"/></svg>매물</button>
+  <button role="tab" data-tab="loans"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 9 12 4l9 5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg>대출</button>
+  <button role="tab" data-tab="market"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>시세</button>
+  <button role="tab" data-tab="todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>할 일</button>
+</div></nav>
+<div id="sheet"></div>
 
 <script>
 (function(){
 "use strict";
-// ---------- helpers ----------
 const $ = (s, el=document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const n = v => { const x = parseFloat(String(v ?? "").replace(/,/g,"")); return isFinite(x) ? x : 0; };
 const has = v => v !== undefined && v !== null && String(v).trim() !== "";
-function won(m){ // m = 만원
+function won(m, unit=true){ // 만원 → "12억 4,000만원"
   if (!isFinite(m)) return "-";
   const neg = m < 0; m = Math.round(Math.abs(m));
   const eok = Math.floor(m/10000), man = m%10000;
   let s = eok ? eok.toLocaleString()+"억" + (man ? " "+man.toLocaleString()+"만" : "") : man.toLocaleString()+"만";
-  return (neg ? "−" : "") + s;
+  if (m === 0) s = "0";
+  return (neg ? "−" : "") + s + (unit ? "원" : "");
 }
-const pct = (x,d=2) => (isFinite(x) ? x.toFixed(d) : "-") + "%";
+const eok = m => (Math.round(m/100)/100).toLocaleString(undefined,{maximumFractionDigits:2}) + "억";
+const pct = (x,d=1) => (isFinite(x) ? x.toFixed(d) : "-") + "%";
 const ls = { get(k){ try{return localStorage.getItem(k);}catch(e){return null;} }, set(k,v){ try{localStorage.setItem(k,v);}catch(e){} } };
 
-// ---------- Korean rules (2026 기준 추정, 반드시 확인) ----------
-// 매매 중개보수 법정 상한요율 (2021.10 개정)
-function brokerCap(price){ // 만원
+// ---------- 세금·수수료 (추정, 확인 필요) ----------
+function brokerCap(price){
   if (price < 5000) return {rate:0.6, max:25};
   if (price < 20000) return {rate:0.5, max:80};
   if (price < 90000) return {rate:0.4};
@@ -157,475 +179,479 @@ function brokerFee(price, rateOverride, vat){
   if (vat) fee *= 1.1;
   return {fee, rate, capRate:cap.rate};
 }
-// 1주택(일시적 2주택 포함) 유상취득 취득세
-function acqTax(price, over85){
-  const eok = price/10000;
-  let r;
-  if (eok <= 6) r = 1;
-  else if (eok <= 9) r = eok*2/3 - 3;
-  else r = 3;
+function acqTax(price, over85){ // 1주택(일시적 2주택 포함)
+  const e = price/10000;
+  let r = e <= 6 ? 1 : e <= 9 ? e*2/3 - 3 : 3;
   r = Math.round(r*100)/100;
-  const edu = r * 0.1;           // 지방교육세
-  const farm = over85 ? 0.2 : 0; // 농어촌특별세
-  const total = r + edu + farm;
+  const total = r + r*0.1 + (over85 ? 0.2 : 0);
   return {rate:r, total, amount: price*total/100};
 }
 function payment(P, ratePct, years){
   const r = ratePct/100/12, N = Math.max(1, Math.round(years*12));
   if (P <= 0) return 0;
-  if (r === 0) return P/N;
-  return P*r/(1-Math.pow(1+r,-N));
+  return r === 0 ? P/N : P*r/(1-Math.pow(1+r,-N));
 }
 function interestPaid(P, ratePct, years, months){
-  const r = ratePct/100/12, M = payment(P, ratePct, years);
-  const k = Math.min(months, Math.round(years*12));
-  if (P <= 0) return 0;
-  if (r === 0) return 0;
+  const r = ratePct/100/12, M = payment(P, ratePct, years), k = Math.min(months, Math.round(years*12));
+  if (P <= 0 || r === 0) return 0;
   const g = Math.pow(1+r,k);
-  const bal = P*g - M*(g-1)/r;
-  return M*k - (P - bal);
+  return M*k - (P - (P*g - M*(g-1)/r));
 }
 
-// ---------- schemas ----------
+// ---------- 입력 항목 ----------
 const SCHEMAS = {
-  sells: { title:"매도 제안·시나리오", addLabel:"매도가 추가", fields:[
-    {k:"label", l:"이름 (예: A부동산 제안, 목표가)", t:"text", req:true},
-    {k:"price", l:"매도가 (만원)", t:"num", req:true},
-    {k:"brokerRate", l:"중개보수율 % (비우면 법정 상한)", t:"num"},
-    {k:"cgt", l:"양도세 추정 (만원)", t:"num", hint:"1세대1주택 비과세·12억 이하면 0. 세무사 확인 권장"},
-    {k:"extra", l:"이사·청소·기타 (만원)", t:"num"},
-    {k:"date", l:"잔금 가능일", t:"text"},
-    {k:"note", l:"메모 (조건, 협상 여지)", t:"area"} ]},
-  buys: { title:"매수 후보", addLabel:"매수 후보 추가", fields:[
-    {k:"label", l:"단지 · 동 · 평형", t:"text", req:true},
-    {k:"price", l:"매수가 (만원)", t:"num", req:true},
-    {k:"kb", l:"KB시세 (만원, 비우면 매수가)", t:"num", hint:"주담대 한도는 KB시세 기준"},
-    {k:"over85", l:"전용 85㎡ 초과 (농특세 0.2%)", t:"chk"},
-    {k:"brokerRate", l:"중개보수율 % (비우면 법정 상한)", t:"num"},
-    {k:"interior", l:"인테리어 견적 (만원)", t:"num"},
-    {k:"moving", l:"이사비 (만원)", t:"num"},
-    {k:"legal", l:"등기·법무사·채권 (만원)", t:"num", hint:"비우면 매수가의 0.15%로 추정"},
-    {k:"date", l:"입주 가능일", t:"text"},
-    {k:"note", l:"특징·메모 (장단점, 협상 포인트)", t:"area"} ]},
-  loans: { title:"대출 조건", addLabel:"은행 조건 추가", fields:[
-    {k:"kind", l:"대출 종류", t:"sel", opts:["주담대","신용·기타"], hint:"주담대로 부족한 금액은 신용·기타 대출로 채워 계산"},
-    {k:"bank", l:"은행·대출자", t:"text", req:true},
-    {k:"product", l:"상품명", t:"text"},
-    {k:"type", l:"금리 방식", t:"sel", opts:["혼합형(5년 고정)","고정형","변동형","주기형"]},
+  sells: { title:"팔 가격", fields:[
+    {k:"label", l:"이름", t:"text", req:true, ph:"예: 현재 호가, A부동산 제안"},
+    {k:"price", l:"매도가", t:"won", req:true},
+    {k:"brokerRate", l:"복비 요율 %", t:"num", hint:"비우면 법정 상한으로 계산"},
+    {k:"cgt", l:"양도세", t:"won", hint:"1세대1주택 비과세면 0"},
+    {k:"extra", l:"기타 비용", t:"won", hint:"근저당 말소 등"},
+    {k:"note", l:"메모", t:"area"} ]},
+  buys: { title:"살 집", fields:[
+    {k:"label", l:"이름", t:"text", req:true, ph:"예: 한솔4단지 409동 17평 9층"},
+    {k:"price", l:"매수가", t:"won", req:true},
+    {k:"kb", l:"KB시세 (일반가)", t:"won", hint:"주담대 한도 = KB시세 × LTV − 방공제"},
+    {k:"interior", l:"인테리어", t:"won"},
+    {k:"moving", l:"이사·청소", t:"won"},
+    {k:"legal", l:"등기·법무사·채권·선수관리비", t:"won", hint:"비우면 매수가의 0.15%로 추정"},
+    {k:"brokerRate", l:"복비 요율 %", t:"num", hint:"비우면 법정 상한으로 계산"},
+    {k:"over85", l:"전용 85㎡ 초과", t:"chk"},
+    {k:"note", l:"특징·메모", t:"area"} ]},
+  loans: { title:"대출", fields:[
+    {k:"kind", l:"종류", t:"sel", opts:["주담대","신용·기타"]},
+    {k:"bank", l:"은행·상품", t:"text", req:true},
+    {k:"type", l:"금리 방식", t:"sel", opts:["혼합형(5년 고정)","주기형","고정형","변동형"]},
     {k:"rate", l:"기본 금리 %", t:"num", req:true},
-    {k:"discount", l:"우대금리 %p (특약 충족 시)", t:"num"},
-    {k:"conditions", l:"특약·우대 조건", t:"text", hint:"예: 급여이체, 카드 월 30만, 청약 가입"},
-    {k:"condCost", l:"특약 유지비용 (만원/월)", t:"num", hint:"조건 맞추느라 추가로 드는 돈"},
-    {k:"max", l:"은행 제시 한도 (만원)", t:"num"},
-    {k:"years", l:"대출 기간 (년)", t:"num"},
+    {k:"discount", l:"우대금리 %p", t:"num"},
+    {k:"conditions", l:"우대 조건·특약", t:"text", ph:"급여이체, 카드 월 30만 등"},
+    {k:"condCost", l:"우대 조건 유지비용 (월)", t:"won"},
+    {k:"max", l:"은행 제시 한도", t:"won", hint:"비우면 KB시세 기준 자동 계산"},
+    {k:"years", l:"기간 (년)", t:"num"},
     {k:"prepay", l:"중도상환수수료 %", t:"num"},
     {k:"note", l:"메모", t:"area"} ]},
-  comps: { title:"시세 기록", addLabel:"시세 추가", fields:[
-    {k:"side", l:"구분", t:"sel", opts:["우리집(매도)","매수 후보"]},
-    {k:"complex", l:"단지", t:"text", req:true},
-    {k:"area", l:"전용면적·평형", t:"text"},
+  comps: { title:"시세", fields:[
+    {k:"side", l:"구분", t:"sel", opts:["매수 후보","우리집(매도)"]},
+    {k:"kind", l:"종류", t:"sel", opts:["KB시세","실거래가","호가","급매"]},
+    {k:"complex", l:"단지·동", t:"text", req:true},
+    {k:"area", l:"평형", t:"text", ph:"17평"},
     {k:"floor", l:"층", t:"text"},
-    {k:"kind", l:"종류", t:"sel", opts:["실거래가","호가","급매"]},
-    {k:"price", l:"가격 (만원)", t:"num", req:true},
-    {k:"date", l:"거래·확인일", t:"text"},
+    {k:"price", l:"가격", t:"won", req:true},
+    {k:"date", l:"날짜", t:"text", ph:"2026-09-18"},
     {k:"note", l:"메모", t:"text"} ]},
 };
 const SETTINGS_FIELDS = [
-  {k:"cash", l:"보유 현금·예금 (만원)", t:"num"},
-  {k:"payoff", l:"지금 집 대출 잔액 (만원)", t:"num", hint:"매도 시 상환"},
-  {k:"payoffFee", l:"기존 대출 중도상환수수료 (만원)", t:"num"},
-  {k:"income", l:"부부 합산 연소득 (만원)", t:"num", hint:"DSR 계산용"},
-  {k:"otherDebt", l:"기타 대출 연 원리금 (만원)", t:"num"},
-  {k:"stress", l:"스트레스 가산금리 %p", t:"num", hint:"수도권·규제지역은 은행에 확인"},
+  {k:"cash", l:"보유 자산 (현금·주식 등)", t:"won"},
+  {k:"payoff", l:"지금 집 대출 잔액", t:"won"},
+  {k:"payoffFee", l:"지금 대출 중도상환수수료", t:"won"},
+  {k:"income", l:"부부 합산 연소득", t:"won", hint:"DSR 계산용"},
+  {k:"otherDebt", l:"다른 대출 연 원리금", t:"won"},
+  {k:"ltv", l:"LTV %", t:"num"},
+  {k:"roomDeduct", l:"방공제", t:"won", hint:"경기 과밀억제권역 4,800만"},
+  {k:"cap", l:"주담대 상한", t:"won"},
+  {k:"stress", l:"스트레스 가산금리 %p", t:"num", hint:"은행 확인"},
   {k:"dsrLimit", l:"DSR 한도 %", t:"num"},
-  {k:"ltv", l:"LTV %", t:"num", hint:"지역·규제에 따라 다름"},
-  {k:"cap", l:"주담대 절대한도 (만원)", t:"num", hint:"정부 대책상 상한, 은행 확인"},
-  {k:"roomDeduct", l:"방공제 (만원)", t:"num", hint:"소액임차보증금 공제. 과밀억제권역 4,800"},
-  {k:"horizon", l:"비교 기간 (년)", t:"num", hint:"이 기간 이자+특약비용으로 비교"},
-  {k:"vat", l:"중개보수에 부가세 10% 포함", t:"chk"},
+  {k:"qInterior", l:"기본 인테리어 (빠른 계산용)", t:"won"},
+  {k:"qMoving", l:"기본 이사·청소 (빠른 계산용)", t:"won"},
+  {k:"qLegal", l:"기본 등기 등 (빠른 계산용)", t:"won"},
+  {k:"horizon", l:"이자 비교 기간 (년)", t:"num"},
+  {k:"vat", l:"복비에 부가세 10% 포함", t:"chk"},
 ];
-const DEFAULT_SETTINGS = {cash:"", payoff:"", payoffFee:"", income:"", otherDebt:"", stress:"1.5", dsrLimit:"40", ltv:"70", cap:"60000", roomDeduct:"", horizon:"5", vat:true};
+const DEFAULT_SETTINGS = {cash:"", payoff:"", payoffFee:"", income:"", otherDebt:"", stress:"1.5", dsrLimit:"40", ltv:"40", cap:"60000", roomDeduct:"", horizon:"5", vat:true, qInterior:"3000", qMoving:"255", qLegal:"487"};
 
-// ---------- state & storage ----------
-const state = { sells:[], buys:[], loans:[], comps:[], todos:[], settings:{...DEFAULT_SETTINGS}, pickedSell:null };
+// ---------- 상태·저장 ----------
+const state = { sells:[], buys:[], loans:[], comps:[], todos:[], settings:{...DEFAULT_SETTINGS} };
 let db = null, shared = false, readOnly = false;
 const local = { sells:{}, buys:{}, loans:{}, comps:{}, todos:{} };
-let tab = ls.get("tab") || "summary";
-const editing = {}; // coll -> id|"new"
-const confirmDel = {};
+let tab = ls.get("tab2") || "home";
+let pickedSell = ls.get("pickedSell");
+let homesSeg = "buy", marketSeg = "매수 후보";
+const open = new Set();
+let sheet = null; // {kind, coll, id}
+let delArm = false;
+const quick = { kb: ls.get("quickKb") || "", price: "" };
 
 const whoSel = $("#who");
 whoSel.value = ls.get("who") || "경한";
 whoSel.addEventListener("change", () => ls.set("who", whoSel.value));
-
-function setStatus(t){ $("#status").textContent = t; }
 function banner(t){ const b=$("#banner"); b.textContent=t||""; b.hidden=!t; }
 
 async function saveDoc(coll, id, data){
   data = {...data, by: whoSel.value, at: new Date().toISOString()};
-  if (!shared){ local[coll][id] = {id, ...data}; syncLocal(coll); return; }
-  try { await db.collection(coll).doc(id).set(data); }
-  catch(e){ handleErr(e); }
+  if (!shared){ local[coll][id] = {id, ...data}; state[coll] = Object.values(local[coll]); render(); return; }
+  try { await db.collection(coll).doc(id).set(data); } catch(e){ handleErr(e); }
 }
 async function delDoc(coll, id){
-  if (!shared){ delete local[coll][id]; syncLocal(coll); return; }
+  if (!shared){ delete local[coll][id]; state[coll] = Object.values(local[coll]); render(); return; }
   try { await db.collection(coll).doc(id).delete(); } catch(e){ handleErr(e); }
 }
 async function saveSettings(s){
-  state.settings = s;
-  if (!shared){ render(); return; }
-  try { await db.doc("plan/settings").set(s); } catch(e){ handleErr(e); }
+  state.settings = s; render();
+  if (shared){ try { await db.doc("plan/settings").set(s); } catch(e){ handleErr(e); } }
 }
 function handleErr(e){
-  if (e && e.code === "invalid_argument"){ readOnly = true; banner("이 화면에서는 보기만 할 수 있어요. 수정하려면 공유 권한을 '편집 가능'으로 받아야 합니다."); render(); return; }
+  if (e && e.code === "invalid_argument"){ readOnly = true; banner("보기 전용으로 열렸어요. 수정하려면 '편집 가능' 권한이 필요해요."); render(); return; }
   if (e && e.code === "quota_exceeded"){ banner("저장 공간이 가득 찼어요. 오래된 시세 기록을 지워 주세요."); return; }
   banner("저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
 }
-function syncLocal(coll){ state[coll] = Object.values(local[coll]); render(); }
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 
-// ---------- computations ----------
+// ---------- 계산 ----------
+const S = () => state.settings;
 function sellCalc(s){
-  const S = state.settings, price = n(s.price);
-  const b = brokerFee(price, s.brokerRate, !!S.vat);
-  const cgt = n(s.cgt), extra = n(s.extra), payoff = n(S.payoff) + n(S.payoffFee);
-  const net = price - b.fee - cgt - extra - payoff;
-  return {price, broker:b, cgt, extra, payoff, net};
+  const price = n(s.price), b = brokerFee(price, s.brokerRate, !!S().vat);
+  const cgt = n(s.cgt), extra = n(s.extra), payoff = n(S().payoff) + n(S().payoffFee);
+  return {price, broker:b, cgt, extra, payoff, net: price - b.fee - cgt - extra - payoff};
 }
 function buyCalc(b){
-  const S = state.settings, price = n(b.price);
-  const tax = acqTax(price, !!b.over85);
-  const br = brokerFee(price, b.brokerRate, !!S.vat);
-  const legal = has(b.legal) ? n(b.legal) : price*0.0015;
-  const interior = n(b.interior), moving = n(b.moving);
+  const price = n(b.price), tax = acqTax(price, !!b.over85), br = brokerFee(price, b.brokerRate, !!S().vat);
+  const legal = has(b.legal) ? n(b.legal) : price*0.0015, interior = n(b.interior), moving = n(b.moving);
   const extras = tax.amount + br.fee + legal + interior + moving;
   return {price, tax, broker:br, legal, interior, moving, extras, total: price + extras};
 }
 const isSub = l => l.kind === "신용·기타";
-function mainLimit(loan, base){
-  const S = state.settings;
-  const limits = [Math.max(0, base * (has(S.ltv) ? n(S.ltv) : 70)/100 - n(S.roomDeduct))];
-  if (has(S.cap)) limits.push(n(S.cap));
-  if (has(loan.max)) limits.push(n(loan.max));
-  return Math.min(...limits);
+function mainLimit(loan, kb){
+  const lim = [Math.max(0, kb * (has(S().ltv) ? n(S().ltv) : 40)/100 - n(S().roomDeduct))];
+  if (has(S().cap)) lim.push(n(S().cap));
+  if (loan && has(loan.max)) lim.push(n(loan.max));
+  return Math.min(...lim);
 }
 function loanCost(loan, amt){
-  const S = state.settings;
-  const rate = n(loan.rate) - n(loan.discount);
-  const years = n(loan.years) || (isSub(loan) ? 5 : 30);
-  const H = Math.max(1, n(S.horizon) || 5);
-  const monthly = payment(amt, rate, years);
-  const stressMonthly = payment(amt, rate + (isSub(loan) ? 0 : n(S.stress)), years);
-  const interest = interestPaid(amt, rate, years, H*12);
-  const cond = amt > 0 ? n(loan.condCost) * 12 * H : 0;
-  return {rate, years, amt, monthly, stressMonthly, interest, cond, cost: interest + cond, H};
+  const rate = n(loan.rate) - n(loan.discount), years = n(loan.years) || (isSub(loan) ? 5 : 30);
+  const H = Math.max(1, n(S().horizon) || 5);
+  return {rate, years, amt, monthly: payment(amt, rate, years),
+    stressMonthly: payment(amt, rate + (isSub(loan) ? 0 : n(S().stress)), years),
+    cost: interestPaid(amt, rate, years, H*12) + (amt > 0 ? n(loan.condCost)*12*H : 0)};
 }
-// 주담대를 한도까지 쓰고, 모자라면 신용·기타 대출로 채우는 조합 중 가장 싼 것
-function financing(need, base){
-  const S = state.settings;
-  if (need <= 0) return {need, parts:[], ok:true, cost:0, monthly:0, dsr:NaN};
+function financing(need, kb){
+  const empty = {need, parts:[], short:0, cost:0, monthly:0, dsr:NaN, dsrOk:true, limit: mainLimit(null, kb)};
+  if (need <= 0) return empty;
   const mains = state.loans.filter(l => !isSub(l)), subs = state.loans.filter(isSub);
   const plans = [];
   const tryMain = m => {
-    const lim = m ? mainLimit(m, base) : 0;
-    const mainAmt = Math.min(need, lim);
-    const rest = need - mainAmt;
-    const parts = m && mainAmt > 0 ? [{loan:m, c:loanCost(m, mainAmt), limit:lim}] : [];
-    if (rest <= 0.5){ plans.push({parts, ok:true}); return; }
-    const fits = subs.filter(x => !has(x.max) || n(x.max) >= rest - 0.5).map(x => ({loan:x, c:loanCost(x, rest), limit: has(x.max) ? n(x.max) : Infinity}));
-    fits.sort((a,b) => a.c.cost - b.c.cost);
-    if (fits[0]) plans.push({parts:[...parts, fits[0]], ok:true});
-    else plans.push({parts, ok:false, short: rest});
+    const limit = mainLimit(m, kb), mainAmt = Math.min(need, limit), rest = need - mainAmt;
+    const parts = m && mainAmt > 0 ? [{loan:m, c:loanCost(m, mainAmt)}] : [];
+    let short = rest > 0.5 ? rest : 0;
+    if (short){
+      const fits = subs.filter(x => !has(x.max) || n(x.max) >= short - 0.5).map(x => ({loan:x, c:loanCost(x, short)})).sort((a,b) => a.c.cost - b.c.cost);
+      if (fits[0]){ parts.push(fits[0]); short = 0; }
+    }
+    plans.push({need, parts, short, limit, mainAmt: m ? mainAmt : 0});
   };
   if (mains.length) mains.forEach(tryMain); else tryMain(null);
+  const inc = n(S().income);
   plans.forEach(p => {
     p.cost = p.parts.reduce((a,x) => a + x.c.cost, 0);
     p.monthly = p.parts.reduce((a,x) => a + x.c.monthly, 0);
-    const inc = n(S.income);
-    p.dsr = inc > 0 ? (p.parts.reduce((a,x) => a + x.c.stressMonthly, 0)*12 + n(S.otherDebt)) / inc * 100 : NaN;
-    p.dsrOk = !isFinite(p.dsr) || p.dsr <= (n(S.dsrLimit) || 40);
-    p.need = need;
+    p.dsr = inc > 0 ? (p.parts.reduce((a,x) => a + x.c.stressMonthly, 0)*12 + n(S().otherDebt)) / inc * 100 : NaN;
+    p.dsrOk = !isFinite(p.dsr) || p.dsr <= (n(S().dsrLimit) || 40);
   });
-  plans.sort((a,b) => (b.ok && b.dsrOk) - (a.ok && a.dsrOk) || a.cost - b.cost);
-  return plans[0] || {need, parts:[], ok:false, short:need, cost:0, monthly:0, dsr:NaN, dsrOk:true};
+  plans.sort((a,b) => a.short - b.short || (b.dsrOk - a.dsrOk) || a.cost - b.cost);
+  return plans[0];
 }
-function bestSell(){
+function currentSell(){
   if (!state.sells.length) return null;
-  const picked = state.sells.find(s => s.id === state.pickedSell);
-  if (picked) return picked;
-  return [...state.sells].sort((a,b) => sellCalc(b).net - sellCalc(a).net)[0];
+  return state.sells.find(s => s.id === pickedSell) || [...state.sells].sort((a,b) => n(b.price) - n(a.price))[0];
 }
-function combos(){
-  const sell = bestSell();
-  const sellNet = sell ? sellCalc(sell).net : 0;
-  const cash = n(state.settings.cash);
-  return state.buys.map(b => {
-    const bc = buyCalc(b);
-    const need = bc.total - sellNet - cash;
-    const plan = financing(need, has(b.kb) ? n(b.kb) : bc.price);
-    const noSubs = !state.loans.some(isSub);
-    const feasible = need <= 0 || ((plan.ok || noSubs) && plan.dsrOk);
-    return {buy:b, bc, need, plan, feasible, moveCost: bc.extras + (need > 0 ? plan.cost : 0)};
-  }).sort((a,b) => (b.feasible - a.feasible) || (a.moveCost - b.moveCost));
+function evalBuy(b){
+  const sell = currentSell(), sellNet = sell ? sellCalc(sell).net : 0;
+  const bc = buyCalc(b), need = bc.total - sellNet - n(S().cash);
+  const kb = has(b.kb) ? n(b.kb) : bc.price;
+  return {buy:b, bc, need, kb, plan: financing(need, kb)};
 }
-const partName = p => `${esc(p.loan.bank)} ${won(p.c.amt)}`;
-
-// ---------- rendering ----------
-function render(){
-  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
-  document.querySelectorAll("section.tab").forEach(s => s.hidden = s.id !== "tab-"+tab);
-  const R = {summary:renderSummary, sells:renderSells, buys:renderBuys, loans:renderLoans, comps:renderComps, plan:renderPlan, settings:renderSettings};
-  $("#tab-"+tab).innerHTML = R[tab]();
+function ranked(){
+  return state.buys.map(evalBuy).sort((a,b) => a.plan.short - b.plan.short || (b.plan.dsrOk - a.plan.dsrOk) || (a.bc.extras + a.plan.cost) - (b.bc.extras + b.plan.cost));
 }
-function byLine(r){ return r.by ? `<div class="by">${esc(r.by)} · ${r.at ? esc(r.at.slice(5,10).replace("-","/")) : ""}</div>` : ""; }
-function actions(coll, r){
-  if (readOnly) return "";
-  const c = confirmDel[coll] === r.id;
-  return `<button class="link" data-act="edit" data-coll="${coll}" data-id="${esc(r.id)}">수정</button>
-    <button class="link del" data-act="del" data-coll="${coll}" data-id="${esc(r.id)}">${c ? "정말 삭제" : "삭제"}</button>`;
+function quickEval(priceMan, kbMan){
+  return evalBuy({price: priceMan, kb: kbMan, interior:S().qInterior, moving:S().qMoving, legal:S().qLegal});
 }
-function formHtml(coll){
-  const sch = SCHEMAS[coll], id = editing[coll];
-  if (!id) return readOnly ? "" : `<div><button class="btn primary" data-act="new" data-coll="${coll}">+ ${sch.addLabel}</button></div>`;
-  const rec = id === "new" ? {} : (state[coll].find(r => r.id === id) || {});
-  return `<form class="grid panel" data-form="${coll}" style="margin:0">
-    ${sch.fields.map(f => fieldHtml(coll, f, rec[f.k])).join("")}
-    <div class="formbar"><button type="button" class="btn" data-act="cancel" data-coll="${coll}">취소</button>
-    <button type="submit" class="btn primary">${id === "new" ? "추가" : "저장"}</button></div></form>`;
-}
-function fieldHtml(prefix, f, v){
-  const id = `${prefix}-${f.k}`;
-  const hint = f.hint ? `<span class="hint">${esc(f.hint)}</span>` : "";
-  if (f.t === "chk") return `<label class="f chk" for="${id}"><input type="checkbox" id="${id}" name="${f.k}" ${v ? "checked" : ""}> ${esc(f.l)}</label>`;
-  if (f.t === "area") return `<label class="f wide" for="${id}">${esc(f.l)}<textarea id="${id}" name="${f.k}">${esc(v)}</textarea>${hint}</label>`;
-  if (f.t === "sel") return `<label class="f" for="${id}">${esc(f.l)}<select id="${id}" name="${f.k}">${f.opts.map(o => `<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select>${hint}</label>`;
-  const mode = f.t === "num" ? 'inputmode="decimal"' : "";
-  return `<label class="f" for="${id}">${esc(f.l)}<input id="${id}" name="${f.k}" ${mode} ${f.req?"required":""} value="${esc(v)}">${hint}</label>`;
+function maxPriceNoExtra(kbMan){ // 추가 조달 없이 살 수 있는 최대 매수가
+  let lo = 0, hi = 400000;
+  for (let i=0;i<40;i++){ const mid=(lo+hi)/2; if (quickEval(mid, kbMan).plan.short > 0.5) hi = mid; else lo = mid; }
+  return Math.floor(lo/100)*100;
 }
 
-function renderSummary(){
-  const S = state.settings, sell = bestSell(), list = combos();
-  const sc = sell ? sellCalc(sell) : null;
-  const cash = n(S.cash);
-  const top = list[0];
-  let h = `<div class="tiles">
-    <div class="tile"><div class="k">매도 후 손에 남는 돈</div><div class="v">${sc ? won(sc.net) : "-"}</div><div class="d">${sell ? esc(sell.label)+" 기준" : "매도 탭에서 매도가를 넣어 주세요"}</div></div>
-    <div class="tile"><div class="k">보유 현금</div><div class="v">${won(cash)}</div><div class="d">우리 정보 탭에서 수정</div></div>
-    <div class="tile"><div class="k">가장 유리한 조합</div><div class="v" style="font-size:16px;font-family:var(--sans)">${top ? esc(top.buy.label) : "-"}</div><div class="d">${top && top.need > 0 && top.plan.parts.length ? "월 상환 "+won(top.plan.monthly) : (top && top.need<=0 ? "대출 없이 가능" : "")}</div></div>
-    <div class="tile"><div class="k">${esc(S.horizon||5)}년간 갈아타기 부대비용</div><div class="v">${top ? won(top.moveCost) : "-"}</div><div class="d">세금·복비·인테리어·이자·특약비 합계</div></div>
+// ---------- 화면 조각 ----------
+function fundingBlock(plan){
+  if (plan.need <= 0) return `<div class="funding"><span class="label">대출 없이 가능</span><span class="v green">${won(-plan.need)} 남음</span></div>`;
+  if (plan.short > 0) return `<div class="funding"><span class="label">주담대 후 더 필요한 돈</span><span class="v red">${won(plan.short)}</span></div>`;
+  return `<div class="funding"><span class="label">주담대만으로 가능</span><span class="v green">추가 0원</span></div>`;
+}
+function dsrBlock(plan){
+  if (plan.need <= 0 || !isFinite(plan.dsr)) return "";
+  const lim = n(S().dsrLimit) || 40, over = plan.dsr > lim;
+  return `<div class="tight" style="display:flex;flex-direction:column;gap:6px">
+    <div class="rowkv"><span class="k">DSR <span class="small">스트레스 +${esc(S().stress||0)}%p</span></span><span class="v ${over?"red":""}">${pct(plan.dsr)} <span class="small">/ 한도 ${lim}%</span></span></div>
+    <div class="bar"><i class="${over?"over":""}" style="width:${Math.min(100, plan.dsr/60*100)}%"></i><b style="left:${lim/60*100}%"></b></div></div>`;
+}
+function statsBlock(x){
+  const p = x.plan, main = p.parts.find(q => !isSub(q.loan));
+  return `<div class="stats">
+    <div class="stat"><div class="k">주담대</div><div class="v">${won(main ? main.c.amt : Math.min(Math.max(x.need,0), p.limit), false)}</div></div>
+    <div class="stat"><div class="k">월 상환</div><div class="v">${p.monthly ? won(p.monthly, false) : "-"}</div></div>
+    <div class="stat"><div class="k">부대비용</div><div class="v">${won(x.bc.extras, false)}</div></div></div>`;
+}
+function candCard(x, i){
+  const b = x.buy, isOpen = open.has(b.id), p = x.plan;
+  const tag = i === 0 ? `<span class="badge blue">가장 부담 적음</span>` : !p.dsrOk ? `<span class="badge red">DSR 초과</span>` : "";
+  let h = `<div class="card cand" tabindex="0" data-act="toggle" data-id="${esc(b.id)}">
+    <div class="cand-head"><div><div class="cand-name">${esc(b.label)}</div>
+      <div class="small">매수 ${eok(x.bc.price)} · KB ${has(b.kb) ? eok(n(b.kb)) : "미입력"}</div></div>${tag}</div>
+    ${fundingBlock(p)}${statsBlock(x)}${dsrBlock(p)}`;
+  if (isOpen){
+    const sell = currentSell(), sc = sell ? sellCalc(sell) : null;
+    h += `<div class="details">
+      <div class="rowkv"><span class="k">팔고 남는 돈</span><span class="v">${sc ? won(sc.net) : "-"}</span></div>
+      <div class="rowkv"><span class="k">+ 보유 자산</span><span class="v">${won(n(S().cash))}</span></div>
+      <div class="rowkv"><span class="k">− 매수가</span><span class="v">${won(x.bc.price)}</span></div>
+      <div class="rowkv"><span class="k">− 취득세 ${pct(x.bc.tax.total,2)}</span><span class="v">${won(x.bc.tax.amount)}</span></div>
+      <div class="rowkv"><span class="k">− 복비 ${pct(x.bc.broker.rate,1)}${S().vat?"+VAT":""}</span><span class="v">${won(x.bc.broker.fee)}</span></div>
+      <div class="rowkv"><span class="k">− 등기·채권 등</span><span class="v">${won(x.bc.legal)}</span></div>
+      <div class="rowkv"><span class="k">− 인테리어</span><span class="v">${won(x.bc.interior)}</span></div>
+      <div class="rowkv"><span class="k">− 이사·청소</span><span class="v">${won(x.bc.moving)}</span></div>
+      <div class="rowkv total"><span class="k">빌려야 하는 돈</span><span class="v">${won(Math.max(0,x.need))}</span></div>
+      <div class="rowkv indent"><span class="k">주담대 한도 (KB ${eok(x.kb)} × ${esc(S().ltv)}% − ${won(n(S().roomDeduct),false)})</span><span class="v">${won(p.limit)}</span></div>
+      ${p.parts.map(q => `<div class="rowkv indent"><span class="k">${esc(q.loan.bank)} ${pct(q.c.rate,2)} · ${q.c.years}년</span><span class="v">${won(q.c.amt)}</span></div>`).join("")}
+      ${p.short ? `<div class="rowkv indent"><span class="k">추가 조달 (할 일 탭에서 계획)</span><span class="v red">${won(p.short)}</span></div>` : ""}
+      ${b.note ? `<div class="note">${esc(b.note)}</div>` : ""}
+      ${readOnly ? "" : `<div class="actions"><button class="btn sm" data-act="edit" data-coll="buys" data-id="${esc(b.id)}">수정</button></div>`}
+    </div>`;
+  } else {
+    h += `<div class="small" style="text-align:center">눌러서 자세히 보기</div>`;
+  }
+  return h + `</div>`;
+}
+
+// ---------- 탭 ----------
+function renderHome(){
+  const sell = currentSell(), sc = sell ? sellCalc(sell) : null;
+  const list = ranked(), top = list[0];
+  let h = `<div class="card tight">
+    <div class="label">팔 가격을 골라 보세요</div>
+    <div class="chips">${state.sells.slice().sort((a,b)=>n(b.price)-n(a.price)).map(s => `<button class="chip" data-act="pickSell" data-id="${esc(s.id)}" aria-pressed="${sell && s.id===sell.id}">${eok(n(s.price))}</button>`).join("")}
+      ${readOnly ? "" : `<button class="chip" data-act="new" data-coll="sells">+ 추가</button>`}</div>
+    ${sc ? `<div class="rowkv" style="margin-top:4px"><span class="k">팔고 손에 남는 돈</span><span class="mid">${won(sc.net)}</span></div>
+    <div class="small">${esc(sell.label)} · 복비 ${won(sc.broker.fee,false)} · 대출 상환 ${won(sc.payoff,false)}${sc.cgt ? " · 양도세 "+won(sc.cgt,false) : ""}</div>` : `<div class="empty">팔 가격을 추가해 주세요</div>`}
   </div>`;
-  if (state.sells.length > 1){
-    h += `<div class="panel row"><label class="f" for="pickSell" style="flex-direction:row;align-items:center;gap:8px">비교 기준 매도가
-      <select id="pickSell" style="width:auto"><option value="">가장 많이 남는 것 자동</option>${state.sells.map(s => `<option value="${esc(s.id)}" ${s.id===state.pickedSell?"selected":""}>${esc(s.label)} · ${won(n(s.price))}</option>`).join("")}</select></label>
-      <span class="hint">매도가를 바꿔 보며 대출 필요액이 어떻게 변하는지 보세요.</span></div>`;
-  }
-  h += `<div class="panel"><div class="row"><h2>매수 후보별 최적 대출 조합</h2><span class="hint">부대비용이 적은 순 · 한도·DSR 통과 조합 우선</span></div>
-  <div class="scroll"><table><thead><tr><th>매수 후보</th><th class="r">매수가</th><th class="r">부대비용</th><th class="r">필요 대출</th><th>주담대 · 추가 조달</th><th class="r">월 상환</th><th class="r">DSR(스트레스)</th><th class="r">${esc(S.horizon||5)}년 이자+특약비</th><th class="r">총 부대비용</th><th>판정</th></tr></thead><tbody>`;
-  if (!list.length) h += `<tr><td colspan="10" class="hint">매수 후보를 추가하면 여기에서 비교됩니다.</td></tr>`;
-  list.forEach((x,i) => {
-    const p = x.plan, loanNeed = x.need > 0;
-    let verdict;
-    if (!loanNeed) verdict = `<span class="pill good">대출 불필요</span>`;
-    else if (!state.loans.length) verdict = `<span class="pill info">대출 조건 입력 필요</span>`;
-    else if (!p.ok && !state.loans.some(isSub)) verdict = `<span class="pill warn">추가 조달 ${won(p.short)}</span>`;
-    else if (!p.ok) verdict = `<span class="pill bad">${won(p.short)} 부족</span>`;
-    else if (!p.dsrOk) verdict = `<span class="pill bad">DSR 초과</span>`;
-    else verdict = i === 0 ? `<span class="stamp">최적</span>` : `<span class="pill good">가능</span>`;
-    h += `<tr class="${i===0 && x.feasible ? "best" : ""}"><td><b>${esc(x.buy.label)}</b></td>
-      <td class="r num">${won(x.bc.price)}</td><td class="r num">${won(x.bc.extras)}</td>
-      <td class="r num">${loanNeed ? won(x.need) : "0"}</td>
-      <td>${loanNeed ? p.parts.map(q => `<div>${partName(q)} <span class="hint">${pct(q.c.rate)}</span></div>`).join("") + (p.short ? `<div class="hint">추가 조달 ${won(p.short)}</div>` : "") : "-"}</td>
-      <td class="r num">${loanNeed && p.parts.length ? won(p.monthly) : "-"}</td>
-      <td class="r num">${loanNeed && isFinite(p.dsr) ? pct(p.dsr,1) : "-"}</td>
-      <td class="r num">${loanNeed ? won(p.cost) : "0"}</td>
-      <td class="r num"><b>${won(x.moveCost)}</b></td><td>${verdict}</td></tr>`;
-  });
-  h += `</tbody></table></div></div>`;
   if (top){
-    const bc = top.bc;
-    h += `<div class="cols2">
-      <div class="panel"><h3>${esc(top.buy.label)} · 돈 흐름</h3>${top.buy.note ? `<p class="hint" style="margin:4px 0 0">${esc(top.buy.note)}</p>` : ""}<div class="breakdown">
-        <span>매도 순수령액</span><span class="num">${sc ? won(sc.net) : "0"}</span>
-        <span>+ 보유 현금</span><span class="num">${won(cash)}</span>
-        <span>− 매수가</span><span class="num">${won(bc.price)}</span>
-        <span>− 취득세 (${pct(bc.tax.total)})</span><span class="num">${won(bc.tax.amount)}</span>
-        <span>− 중개보수 (${pct(bc.broker.rate,1)}${S.vat?"+VAT":""})</span><span class="num">${won(bc.broker.fee)}</span>
-        <span>− 등기·법무사</span><span class="num">${won(bc.legal)}</span>
-        <span>− 인테리어</span><span class="num">${won(bc.interior)}</span>
-        <span>− 이사비</span><span class="num">${won(bc.moving)}</span>
-        <span class="tot">${top.need > 0 ? "대출로 채울 금액" : "남는 돈"}</span><span class="num tot">${won(Math.abs(top.need))}</span>
-        ${top.need > 0 ? top.plan.parts.map(q => `<span>· ${esc(q.loan.kind||"주담대")} (${esc(q.loan.bank)})</span><span class="num">${won(q.c.amt)}</span>`).join("") + (top.plan.short ? `<span>· 주담대 후 추가 조달</span><span class="num">${won(top.plan.short)}</span>` : "") : ""}
-      </div></div>
-      <div class="panel"><h3>이 표를 읽는 법</h3><div class="guide hint" style="margin-top:8px">
-        <p><b>총 부대비용</b>은 집값 자체를 뺀, 갈아타면서 사라지는 돈입니다. 같은 집값이면 이 숫자가 작은 쪽이 유리합니다.</p>
-        <p>대출은 금리만 보지 않고 <b>우대금리 − 특약 유지비용</b>까지 계산합니다. 우대 0.3%p를 받으려고 매달 카드 실적을 채우는 비용이 더 크면 순위가 바뀝니다.</p>
-        <p>DSR은 스트레스 가산금리를 더한 월 상환액으로 계산합니다. 은행 심사와 차이가 날 수 있으니 사전 한도 조회로 확인하세요.</p>
-      </div></div></div>`;
+    h += `<div class="card">
+      <div class="label">지금 기준 가장 부담 적은 집</div>
+      <div class="mid">${esc(top.buy.label)}</div>
+      <div><div class="small">${top.plan.need <= 0 ? "대출 없이 살 수 있어요" : top.plan.short > 0 ? "주담대 받고도 더 필요한 돈" : "주담대만으로 살 수 있어요"}</div>
+      <div class="big ${top.plan.short > 0 ? "red" : "green"}">${top.plan.short > 0 ? won(top.plan.short) : top.plan.need <= 0 ? won(-top.need)+" 남음" : "0원"}</div></div>
+      <div class="small">월 상환 ${top.plan.monthly ? won(top.plan.monthly) : "-"} · DSR ${pct(top.plan.dsr)}</div>
+    </div>`;
   }
+  h += quickCard();
+  h += `<div class="sec"><h2>살 집 비교</h2><span class="small">더 필요한 돈이 적은 순</span></div>`;
+  h += list.length ? list.map(candCard).join("") : `<div class="card"><div class="empty">매물 탭에서 살 집을 추가해 주세요</div></div>`;
   return h;
 }
-
-function renderSells(){
-  let h = `<div class="row"><div><h2>매도</h2><p class="sub">제안받은 가격과 목표가를 모두 적어 두면 실제로 손에 남는 돈을 비교할 수 있어요.</p></div></div>` + formHtml("sells");
-  const rows = [...state.sells].sort((a,b) => sellCalc(b).net - sellCalc(a).net);
-  h += `<div class="panel scroll"><table><thead><tr><th>제안·시나리오</th><th class="r">매도가</th><th class="r">중개보수</th><th class="r">양도세</th><th class="r">대출상환</th><th class="r">기타</th><th class="r">손에 남는 돈</th><th>잔금</th><th>메모</th><th></th></tr></thead><tbody>`;
-  if (!rows.length) h += `<tr><td colspan="10" class="hint">아직 매도가가 없어요.</td></tr>`;
-  rows.forEach((s,i) => { const c = sellCalc(s);
-    h += `<tr class="${i===0?"best":""}"><td><b>${esc(s.label)}</b>${byLine(s)}</td><td class="r num">${won(c.price)}</td>
-    <td class="r num">${won(c.broker.fee)}<div class="hint">${pct(c.broker.rate,1)}${has(s.brokerRate) && n(s.brokerRate) < c.broker.capRate ? " 협의" : ""}</div></td>
-    <td class="r num">${won(c.cgt)}</td><td class="r num">${won(c.payoff)}</td><td class="r num">${won(c.extra)}</td>
-    <td class="r num"><b>${won(c.net)}</b></td><td>${esc(s.date)}</td><td class="note">${esc(s.note)}</td><td>${actions("sells", s)}</td></tr>`; });
-  h += `</tbody></table></div>`;
-  return h;
+function kbOptions(){
+  const kbs = state.comps.filter(c => c.kind === "KB시세");
+  const opts = kbs.map(c => ({v: String(n(c.price)), l: `${c.complex} ${c.area||""} · KB ${eok(n(c.price))}`}));
+  state.buys.forEach(b => { if (has(b.kb) && !opts.some(o => o.v === String(n(b.kb)))) opts.push({v:String(n(b.kb)), l:`${b.label} · KB ${eok(n(b.kb))}`}); });
+  return opts;
 }
-function renderBuys(){
-  let h = `<div><h2>매수 후보</h2><p class="sub">취득세와 법정 중개보수는 가격을 넣으면 자동 계산됩니다. 인테리어·이사비는 받은 견적을 넣으세요.</p></div>` + formHtml("buys");
-  h += `<div class="panel scroll"><table><thead><tr><th>후보</th><th class="r">매수가</th><th class="r">취득세</th><th class="r">중개보수</th><th class="r">등기·법무사</th><th class="r">인테리어</th><th class="r">이사</th><th class="r">총 필요 금액</th><th>메모</th><th></th></tr></thead><tbody>`;
-  if (!state.buys.length) h += `<tr><td colspan="10" class="hint">아직 매수 후보가 없어요.</td></tr>`;
-  [...state.buys].sort((a,b)=>n(a.price)-n(b.price)).forEach(b => { const c = buyCalc(b);
-    h += `<tr><td><b>${esc(b.label)}</b>${b.date ? `<div class="hint">입주 ${esc(b.date)}</div>` : ""}${byLine(b)}</td><td class="r num">${won(c.price)}</td>
-    <td class="r num">${won(c.tax.amount)}<div class="hint">${pct(c.tax.total)}</div></td>
-    <td class="r num">${won(c.broker.fee)}<div class="hint">${pct(c.broker.rate,1)}</div></td>
-    <td class="r num">${won(c.legal)}${has(b.legal)?"":"<div class='hint'>추정</div>"}</td>
-    <td class="r num">${won(c.interior)}</td><td class="r num">${won(c.moving)}</td>
-    <td class="r num"><b>${won(c.total)}</b></td><td class="note">${esc(b.note)}</td><td>${actions("buys", b)}</td></tr>`; });
-  h += `</tbody></table></div>
-  <p class="hint">취득세는 1주택(일시적 2주택 포함) 세율 기준: 6억 이하 1%, 6~9억 구간 1~3% 비례, 9억 초과 3%, 지방교육세 별도, 85㎡ 초과 시 농특세 0.2%. 다주택·조정대상지역 중과 대상이면 달라지니 법무사에게 확인하세요.</p>`;
+function quickCard(){
+  const opts = kbOptions();
+  if (!quick.kb && opts[0]) quick.kb = opts[0].v;
+  return `<div class="card" id="quick">
+    <div><div class="mid" style="font-size:18px">이 가격이면 살 수 있을까?</div><div class="small">매물이 새로 뜨면 가격만 넣어 바로 확인하세요</div></div>
+    <div class="quick-grid">
+      <label class="field"><span>단지·평형 (KB시세)</span><select id="q-kb">${opts.map(o => `<option value="${esc(o.v)}" ${o.v===quick.kb?"selected":""}>${esc(o.l)}</option>`).join("")}<option value="" ${!quick.kb?"selected":""}>직접 입력 없음</option></select></label>
+      <label class="field"><span>매수가 (억)</span><input id="q-price" inputmode="decimal" placeholder="12.3" value="${esc(quick.price)}"></label>
+    </div>
+    <div id="q-out">${quickOut()}</div>
+  </div>`;
+}
+function quickOut(){
+  const kb = n(quick.kb) || 0, priceEok = n(quick.price);
+  if (!kb) return `<div class="empty">시세 탭에 KB시세를 추가하면 고를 수 있어요</div>`;
+  const maxP = maxPriceNoExtra(kb);
+  let h = `<div class="rowkv"><span class="k">추가 조달 없이 살 수 있는 최대가</span><span class="v blue">${won(maxP)}</span></div>`;
+  if (priceEok > 0){
+    const x = quickEval(priceEok*10000, kb);
+    h = fundingBlock(x.plan) + statsBlock(x) + dsrBlock(x.plan) + `<div style="margin-top:4px"></div>` + h;
+  }
+  return `<div style="display:flex;flex-direction:column;gap:10px">${h}<div class="small">인테리어 ${won(n(S().qInterior),false)} · 이사 ${won(n(S().qMoving),false)} · 등기 등 ${won(n(S().qLegal),false)} 포함</div></div>`;
+}
+function renderHomes(){
+  let h = `<div class="seg" role="group"><button data-act="homesSeg" data-v="buy" aria-pressed="${homesSeg==="buy"}">살 집</button><button data-act="homesSeg" data-v="sell" aria-pressed="${homesSeg==="sell"}">팔 집</button></div>`;
+  if (homesSeg === "buy"){
+    h += state.buys.slice().sort((a,b)=>n(a.price)-n(b.price)).map(b => { const c = buyCalc(b); return `<div class="card tight">
+      <div class="cand-head"><div><div class="cand-name">${esc(b.label)}</div><div class="small">KB ${has(b.kb)?eok(n(b.kb)):"미입력"} · 부대비용 ${won(c.extras)}</div></div><div class="mid">${eok(c.price)}</div></div>
+      ${b.note ? `<div class="note">${esc(b.note)}</div>` : ""}
+      ${readOnly?"":`<div class="actions"><button class="btn sm" data-act="edit" data-coll="buys" data-id="${esc(b.id)}">수정</button></div>`}</div>`; }).join("");
+    if (!readOnly) h += `<button class="add" data-act="new" data-coll="buys">+ 살 집 추가</button>`;
+  } else {
+    h += state.sells.slice().sort((a,b)=>n(b.price)-n(a.price)).map(s => { const c = sellCalc(s); return `<div class="card tight">
+      <div class="cand-head"><div><div class="cand-name">${esc(s.label)}</div><div class="small">복비 ${won(c.broker.fee)} · 대출 상환 ${won(c.payoff)}</div></div><div class="mid">${eok(c.price)}</div></div>
+      <div class="rowkv"><span class="k">손에 남는 돈</span><span class="v">${won(c.net)}</span></div>
+      ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
+      ${readOnly?"":`<div class="actions"><button class="btn sm" data-act="edit" data-coll="sells" data-id="${esc(s.id)}">수정</button></div>`}</div>`; }).join("");
+    if (!readOnly) h += `<button class="add" data-act="new" data-coll="sells">+ 팔 가격 추가</button>`;
+  }
   return h;
 }
 function renderLoans(){
-  const S = state.settings;
-  const top = combos()[0];
-  const need = top ? top.need : 0, price = top ? top.bc.price : 0;
-  let h = `<div><h2>대출 조건</h2><p class="sub">은행 상담 때 받은 금리·우대조건·한도를 그대로 적으세요. ${top && need > 0 ? `아래 계산은 <b>${esc(top.buy.label)}</b> 기준 필요 대출 <b>${won(need)}</b>으로 합니다.` : "매수 후보를 넣으면 필요한 대출액 기준으로 계산됩니다."}</p></div>` + formHtml("loans");
-  const base = top ? (has(top.buy.kb) ? n(top.buy.kb) : price) : 0;
-  const used = new Set(top && need > 0 ? top.plan.parts.map(q => q.loan.id) : []);
-  const mainUsed = top && top.plan.parts.find(q => !isSub(q.loan));
-  const rest = Math.max(0, need - (mainUsed ? mainUsed.c.amt : 0));
-  const rows = state.loans.map(l => {
-    const limit = isSub(l) ? (has(l.max) ? n(l.max) : Infinity) : mainLimit(l, base);
-    const amt = isSub(l) ? rest : Math.min(Math.max(0, need), limit);
-    return {l, limit, c: loanCost(l, amt)};
-  }).sort((a,b) => isSub(a.l) - isSub(b.l) || a.c.cost - b.c.cost);
-  h += `<div class="panel scroll"><table><thead><tr><th>종류</th><th>은행 · 상품</th><th>방식</th><th class="r">기본 → 적용 금리</th><th>특약·우대 조건</th><th class="r">특약비용</th><th class="r">한도</th><th class="r">이 대출로 빌릴 금액</th><th class="r">월 상환</th><th class="r">${esc(S.horizon||5)}년 이자+특약비</th><th class="r">중도상환</th><th>판정</th><th></th></tr></thead><tbody>`;
-  if (!rows.length) h += `<tr><td colspan="13" class="hint">아직 대출 조건이 없어요.</td></tr>`;
-  rows.forEach(({l,limit,c}) => {
-    const sub = isSub(l);
-    const v = need <= 0 ? `<span class="pill info">필요 없음</span>` : used.has(l.id) ? `<span class="stamp">추천</span>` : sub && rest > limit ? `<span class="pill bad">한도 부족</span>` : `<span class="pill good">대안</span>`;
-    h += `<tr class="${used.has(l.id) ? "best":""}"><td><span class="pill ${sub?"warn":"info"}">${esc(l.kind||"주담대")}</span></td><td><b>${esc(l.bank)}</b><div class="hint">${esc(l.product)}</div>${byLine(l)}</td><td>${esc(l.type)}<div class="hint">${esc(c.years)}년</div></td>
-    <td class="r num">${pct(n(l.rate))} → <b>${pct(c.rate)}</b></td><td class="note">${esc(l.conditions)}${l.note?`<div>${esc(l.note)}</div>`:""}</td>
-    <td class="r num">${n(l.condCost) ? won(n(l.condCost))+"/월" : "-"}</td><td class="r num">${isFinite(limit) ? won(limit) : "-"}</td>
-    <td class="r num">${c.amt > 0 ? won(c.amt) : "-"}</td><td class="r num">${c.amt>0 ? won(c.monthly) : "-"}</td><td class="r num"><b>${c.amt>0 ? won(c.cost) : "-"}</b></td>
-    <td class="r num">${has(l.prepay) ? pct(n(l.prepay),1) : "-"}</td><td>${v}</td><td>${actions("loans", l)}</td></tr>`;
-  });
-  h += `</tbody></table></div><p class="hint">주담대 한도는 은행 제시 한도, (KB시세 × LTV − 방공제), 절대한도 중 가장 작은 값입니다. 주담대로 모자란 금액은 신용·기타 대출 중 가장 싼 것으로 채워 계산합니다. 우대금리를 받으려는 조건(급여이체, 카드 실적, 적금 가입 등)에 드는 월 비용을 꼭 적어야 공정하게 비교돼요.</p>`;
+  const s = S();
+  let h = `<div class="card tight"><div class="label">주담대 한도 계산법</div>
+    <div class="mid" style="font-size:18px">KB시세 × ${esc(s.ltv)}% − ${won(n(s.roomDeduct))}</div>
+    <div class="small">최대 ${won(n(s.cap))} · 은행 제시 한도가 더 낮으면 그 금액 · 모자란 돈은 할 일 탭에서 계획</div></div>
+    <div class="sec"><h2>은행별 조건</h2><span class="small">${state.loans.length}곳</span></div>`;
+  const top = ranked()[0];
+  h += state.loans.map(l => {
+    const amt = top ? Math.min(Math.max(0, top.need), mainLimit(l, top.kb)) : 0, c = loanCost(l, amt);
+    return `<div class="card tight">
+      <div class="cand-head"><div><div class="cand-name">${esc(l.bank)}</div><div class="small">${esc(l.kind||"주담대")} · ${esc(l.type||"")} · ${c.years}년</div></div>
+      <div style="text-align:right"><div class="mid">${pct(c.rate,2)}</div>${n(l.discount)?`<div class="small">기본 ${pct(n(l.rate),2)} − 우대 ${n(l.discount)}%p</div>`:""}</div></div>
+      ${top && amt ? `<div class="stats"><div class="stat"><div class="k">빌릴 금액</div><div class="v">${won(amt,false)}</div></div><div class="stat"><div class="k">월 상환</div><div class="v">${won(c.monthly,false)}</div></div><div class="stat"><div class="k">${esc(s.horizon||5)}년 이자</div><div class="v">${won(c.cost,false)}</div></div></div><div class="small">${esc(top.buy.label)} 기준</div>` : ""}
+      ${l.conditions ? `<div class="rowkv"><span class="k">우대 조건</span><span class="v">${esc(l.conditions)}${n(l.condCost)?` (월 ${won(n(l.condCost))})`:""}</span></div>` : ""}
+      ${has(l.prepay) ? `<div class="rowkv"><span class="k">중도상환수수료</span><span class="v">${pct(n(l.prepay),2)}</span></div>` : ""}
+      ${l.note ? `<div class="note">${esc(l.note)}</div>` : ""}
+      ${readOnly?"":`<div class="actions"><button class="btn sm" data-act="edit" data-coll="loans" data-id="${esc(l.id)}">수정</button></div>`}</div>`;
+  }).join("");
+  if (!readOnly) h += `<button class="add" data-act="new" data-coll="loans">+ 은행 상담 내용 추가</button>`;
   return h;
 }
-function renderComps(){
-  let h = `<div><h2>시세 기록</h2><p class="sub">실거래가와 호가를 같이 쌓아 두면 매도 호가를 정하고 매수 가격을 협상할 근거가 됩니다.</p></div>` + formHtml("comps");
-  ["우리집(매도)","매수 후보"].forEach(side => {
-    const rows = state.comps.filter(c => (c.side||"우리집(매도)") === side).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-    const real = rows.filter(r => r.kind === "실거래가").map(r => n(r.price)).sort((a,b)=>a-b);
-    const ask = rows.filter(r => r.kind !== "실거래가").map(r => n(r.price));
-    const med = real.length ? real[Math.floor(real.length/2)] : NaN;
-    h += `<div class="panel"><div class="row"><h3>${side}</h3><span class="hint">실거래 중간값 <b class="num">${isFinite(med)?won(med):"-"}</b> · 호가 최저 <b class="num">${ask.length?won(Math.min(...ask)):"-"}</b></span></div>
-    <div class="scroll"><table><thead><tr><th>단지</th><th>면적</th><th>층</th><th>종류</th><th class="r">가격</th><th>날짜</th><th>메모</th><th></th></tr></thead><tbody>
-    ${rows.length ? rows.map(r => `<tr><td>${esc(r.complex)}</td><td>${esc(r.area)}</td><td>${esc(r.floor)}</td><td><span class="pill ${r.kind==="실거래가"?"info":r.kind==="급매"?"warn":"good"}">${esc(r.kind)}</span></td><td class="r num">${won(n(r.price))}</td><td>${esc(r.date)}</td><td class="note">${esc(r.note)}</td><td>${actions("comps", r)}</td></tr>`).join("") : `<tr><td colspan="8" class="hint">기록 없음</td></tr>`}
-    </tbody></table></div></div>`;
+function renderMarket(){
+  let h = `<div class="seg" role="group"><button data-act="marketSeg" data-v="매수 후보" aria-pressed="${marketSeg==="매수 후보"}">살 곳</button><button data-act="marketSeg" data-v="우리집(매도)" aria-pressed="${marketSeg==="우리집(매도)"}">우리집</button></div>`;
+  const rows = state.comps.filter(c => (c.side||"우리집(매도)") === marketSeg);
+  const groups = {};
+  rows.forEach(r => { const k = `${String(r.complex).replace(/\s*\d+동.*$/,"")} ${r.area||""}`.trim(); (groups[k] = groups[k] || []).push(r); });
+  const keys = Object.keys(groups).sort();
+  if (!keys.length) h += `<div class="card"><div class="empty">기록이 없어요</div></div>`;
+  keys.forEach(k => {
+    const g = groups[k].sort((a,b) => String(b.date).localeCompare(String(a.date)));
+    const kb = g.find(r => r.kind === "KB시세"), real = g.filter(r => r.kind === "실거래가"), asks = g.filter(r => r.kind === "호가" || r.kind === "급매");
+    const lastReal = real[0];
+    h += `<div class="card tight"><div class="cand-name">${esc(k)}</div>
+      <div class="stats"><div class="stat"><div class="k">KB시세</div><div class="v">${kb ? eok(n(kb.price)) : "-"}</div></div>
+      <div class="stat"><div class="k">최근 실거래</div><div class="v">${lastReal ? eok(n(lastReal.price)) : "-"}</div></div>
+      <div class="stat"><div class="k">최저 호가</div><div class="v">${asks.length ? eok(Math.min(...asks.map(a => n(a.price)))) : "-"}</div></div></div>
+      <div class="list">${g.map(r => `<div class="li click" tabindex="0" data-act="edit" data-coll="comps" data-id="${esc(r.id)}"><div><div class="t"><span class="badge ${r.kind==="KB시세"?"blue":r.kind==="실거래가"?"gray":r.kind==="급매"?"red":"orange"}">${esc(r.kind)}</span> ${esc(r.floor||"")}</div><div class="s">${esc(r.date||"")}${r.note?" · "+esc(r.note):""}</div></div><div class="r t">${eok(n(r.price))}</div></div>`).join("")}</div></div>`;
   });
+  if (!readOnly) h += `<button class="add" data-act="new" data-coll="comps">+ 시세 추가</button>`;
   return h;
 }
-function renderPlan(){
-  const todos = [...state.todos].sort((a,b) => (n(a.order)-n(b.order)) || String(a.at).localeCompare(String(b.at)));
+function renderTodo(){
+  const todos = state.todos.slice().sort((a,b) => (n(a.order)-n(b.order)) || String(a.at).localeCompare(String(b.at)));
   const done = todos.filter(t => t.done).length;
-  let h = `<div class="cols2"><div class="panel"><div class="row"><h2>같이 챙길 일</h2><span class="pill info">${done}/${todos.length} 완료</span></div>
-    <ul class="todo">${todos.map(t => `<li class="${t.done?"done":""}"><input type="checkbox" aria-label="완료" data-act="toggle" data-id="${esc(t.id)}" ${t.done?"checked":""} ${readOnly?"disabled":""}><span class="t">${esc(t.text)}<span class="by"> ${t.by?"· "+esc(t.by):""}</span></span>${readOnly?"":`<button class="link del" data-act="del" data-coll="todos" data-id="${esc(t.id)}">${confirmDel.todos===t.id?"정말 삭제":"삭제"}</button>`}</li>`).join("")}</ul>
-    ${readOnly?"":`<form data-form="todo" class="row" style="margin-top:10px;flex-wrap:nowrap"><input id="todo-text" name="text" placeholder="할 일 추가" required><button class="btn primary" type="submit">추가</button></form>`}
-  </div>
-  <div class="panel guide"><h2>좋은 가격에 팔고 사는 순서</h2>
-    <ol>
-      <li><b>시세부터 쌓기.</b> 우리 단지와 후보 단지의 최근 실거래가·호가를 '시세 기록'에 모읍니다. 매도 호가와 매수 협상가의 근거가 됩니다.</li>
-      <li><b>대출 한도를 먼저 확정.</b> 은행 3곳 이상에서 사전 한도·금리를 받아 '대출 조건'에 넣으면 살 수 있는 최대 가격이 정해집니다.</li>
-      <li><b>매도 먼저, 또는 잔금일 맞추기.</b> 매도 잔금일이 매수 잔금일보다 앞서게 계약하면 브릿지 자금이 필요 없습니다. 먼저 사야 한다면 일시적 2주택 처분 기한을 확인하세요.</li>
-      <li><b>중개보수는 상한이지 고정가가 아닙니다.</b> 계약 전에 요율을 협의하고 '매도/매수' 탭의 중개보수율에 반영하세요.</li>
-      <li><b>후보별 총 부대비용 비교.</b> '한눈에 비교'에서 집값이 비슷하면 부대비용이 적은 곳, 월 상환이 소득 대비 부담 없는 곳을 고릅니다.</li>
-      <li><b>계약서 특약 챙기기.</b> 대출 불가 시 계약 해제, 누수 등 하자 처리, 잔금일 조정 가능 여부를 특약으로 적어 두세요.</li>
-    </ol>
-    <p class="hint">세율·대출 규제는 자주 바뀝니다. 이 계산은 판단을 돕는 추정치이고, 최종 금액은 은행·법무사·세무사에게 확인하세요.</p>
-  </div></div>`;
-  return h;
-}
-function renderSettings(){
-  const S = state.settings;
-  return `<div><h2>우리 정보</h2><p class="sub">모든 계산의 기준이 되는 값이에요. 두 사람이 같은 값을 공유합니다.</p></div>
-  <form class="grid panel" data-form="settings" style="margin:0">${SETTINGS_FIELDS.map(f => fieldHtml("set", f, S[f.k])).join("")}
-  ${readOnly?"":`<div class="formbar"><button class="btn primary" type="submit">저장</button></div>`}</form>
-  <p class="hint">기본값 안내: 스트레스 가산금리와 LTV, 절대한도는 지역(수도권·규제지역 여부)과 집값 구간에 따라 다릅니다. 상담한 은행이 알려준 값으로 바꿔 주세요.</p>`;
+  return `<div class="card tight"><div class="cand-head"><div class="mid">같이 챙길 일</div><span class="badge blue">${done}/${todos.length}</span></div>
+    <div>${todos.map(t => `<div class="todo ${t.done?"done":""}"><input type="checkbox" aria-label="완료" data-act="check" data-id="${esc(t.id)}" ${t.done?"checked":""} ${readOnly?"disabled":""}><div class="tt">${esc(t.text)}${t.by && t.by!=="Claude" ? `<div class="by">${esc(t.by)}</div>` : ""}</div>${readOnly?"":`<button class="btn sm danger" data-act="delTodo" data-id="${esc(t.id)}" aria-label="삭제">삭제</button>`}</div>`).join("")}</div>
+    ${readOnly?"":`<form id="todo-form" style="display:flex;gap:8px;margin-top:4px"><input id="todo-text" placeholder="할 일 추가" required><button class="btn primary" style="flex:none" type="submit">추가</button></form>`}
+  </div>`;
 }
 
-// ---------- events ----------
+// ---------- 시트(입력 폼) ----------
+function fieldHtml(f, v){
+  const id = "f-"+f.k, hint = f.hint ? `<span class="hint">${esc(f.hint)}</span>` : "";
+  if (f.t === "chk") return `<label class="chkrow" for="${id}"><input type="checkbox" id="${id}" name="${f.k}" ${v?"checked":""}>${esc(f.l)}</label>`;
+  if (f.t === "area") return `<label class="field" for="${id}"><span>${esc(f.l)}</span><textarea id="${id}" name="${f.k}">${esc(v)}</textarea></label>`;
+  if (f.t === "sel") return `<label class="field" for="${id}"><span>${esc(f.l)}</span><select id="${id}" name="${f.k}">${f.opts.map(o => `<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select>${hint}</label>`;
+  const conv = f.t === "won" ? `<span class="conv" data-conv="${id}">${has(v) ? won(n(v)) : ""}</span>` : "";
+  return `<label class="field" for="${id}"><span>${esc(f.l)}${f.t==="won"?" <span class='hint'>(만원)</span>":""}</span><input id="${id}" name="${f.k}" ${f.t!=="text"?'inputmode="decimal"':""} ${f.req?"required":""} placeholder="${esc(f.ph||"")}" value="${esc(v)}">${conv}${hint}</label>`;
+}
+function renderSheet(){
+  const el = $("#sheet");
+  if (!sheet){ el.innerHTML = ""; return; }
+  let title, fields, rec, canDel = false;
+  if (sheet.kind === "settings"){ title = "우리 정보"; fields = SETTINGS_FIELDS; rec = state.settings; }
+  else { const sch = SCHEMAS[sheet.coll]; fields = sch.fields; rec = sheet.id ? (state[sheet.coll].find(r => r.id === sheet.id) || {}) : {}; title = (sheet.id ? "" : "새 ") + sch.title + (sheet.id ? " 수정" : ""); canDel = !!sheet.id; }
+  el.innerHTML = `<div class="sheet-bg" data-act="closeBg"><form class="sheet" id="sheet-form" role="dialog" aria-label="${esc(title)}">
+    <div class="grip"></div><h3>${esc(title)}</h3>
+    ${fields.map(f => fieldHtml(f, rec[f.k])).join("")}
+    ${readOnly ? "" : `<button class="btn primary" type="submit">저장</button>`}
+    <div class="actions"><button class="btn" type="button" data-act="close">닫기</button>${canDel && !readOnly ? `<button class="btn danger" type="button" data-act="del">${delArm ? "한 번 더 누르면 삭제" : "삭제"}</button>` : ""}</div>
+  </form></div>`;
+}
+function openSheet(s){ sheet = s; delArm = false; renderSheet(); const f = $("#sheet-form input, #sheet-form select"); if (f && !s.id) f.focus(); }
+function closeSheet(){ sheet = null; renderSheet(); }
+
+// ---------- 렌더 ----------
+function render(){
+  document.querySelectorAll("nav.tabbar button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  const a = document.activeElement, keep = a && a.id && $("#main").contains(a) ? {id:a.id, s:a.selectionStart, e:a.selectionEnd} : null;
+  const R = {home:renderHome, homes:renderHomes, loans:renderLoans, market:renderMarket, todo:renderTodo};
+  $("#main").innerHTML = R[tab]();
+  if (keep){ const el = document.getElementById(keep.id); if (el){ el.focus(); try{ el.setSelectionRange(keep.s, keep.e); }catch(e){} } }
+}
+
+// ---------- 이벤트 ----------
 document.addEventListener("click", async e => {
-  const t = e.target.closest("[data-tab],[data-act]"); if (!t) return;
-  if (t.dataset.tab){ tab = t.dataset.tab; ls.set("tab", tab); render(); return; }
+  const t = e.target.closest("[data-tab],[data-act],#gear"); if (!t) return;
+  if (t.id === "gear"){ openSheet({kind:"settings"}); return; }
+  if (t.dataset.tab){ tab = t.dataset.tab; ls.set("tab2", tab); render(); window.scrollTo(0,0); return; }
   const {act, coll, id} = t.dataset;
-  if (act === "new"){ editing[coll] = "new"; render(); focusFirst(coll); }
-  else if (act === "edit"){ editing[coll] = id; render(); focusFirst(coll); }
-  else if (act === "cancel"){ editing[coll] = null; render(); }
+  if (act === "closeBg" && e.target === t) closeSheet();
+  else if (act === "close") closeSheet();
+  else if (act === "pickSell"){ pickedSell = id; ls.set("pickedSell", id); render(); }
+  else if (act === "toggle"){ if (e.target.closest("button")) return; open.has(id) ? open.delete(id) : open.add(id); render(); }
+  else if (act === "new") openSheet({coll});
+  else if (act === "edit"){ e.stopPropagation(); openSheet({coll, id}); }
+  else if (act === "homesSeg"){ homesSeg = t.dataset.v; render(); }
+  else if (act === "marketSeg"){ marketSeg = t.dataset.v; render(); }
   else if (act === "del"){
-    if (confirmDel[coll] === id){ confirmDel[coll] = null; await delDoc(coll, id); render(); }
-    else { confirmDel[coll] = id; render(); setTimeout(() => { if (confirmDel[coll]===id){ confirmDel[coll]=null; render(); } }, 4000); }
+    if (!delArm){ delArm = true; renderSheet(); return; }
+    const {coll:c, id:i} = sheet; closeSheet(); await delDoc(c, i);
   }
+  else if (act === "delTodo"){ await delDoc("todos", id); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && sheet) closeSheet();
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".cand,.li.click")){ e.preventDefault(); e.target.click(); }
 });
 document.addEventListener("change", async e => {
   const t = e.target;
-  if (t.id === "pickSell"){ state.pickedSell = t.value || null; render(); }
-  if (t.dataset && t.dataset.act === "toggle"){
+  if (t.dataset && t.dataset.act === "check"){
     const rec = state.todos.find(x => x.id === t.dataset.id); if (!rec) return;
-    const {id, ...rest} = rec; await saveDoc("todos", id, {...rest, done: t.checked}); render();
+    const {id, ...rest} = rec; await saveDoc("todos", id, {...rest, done: t.checked});
   }
+  if (t.id === "q-kb"){ quick.kb = t.value; ls.set("quickKb", t.value); $("#q-out").innerHTML = quickOut(); }
 });
-function focusFirst(coll){ const f = document.querySelector(`form[data-form="${coll}"] input, form[data-form="${coll}"] select`); if (f) f.focus(); }
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.id === "q-price"){ quick.price = t.value; $("#q-out").innerHTML = quickOut(); }
+  const conv = document.querySelector(`[data-conv="${t.id}"]`);
+  if (conv) conv.textContent = has(t.value) ? won(n(t.value)) : "";
+});
 document.addEventListener("submit", async e => {
-  const f = e.target.closest("form[data-form]"); if (!f) return;
   e.preventDefault();
-  const kind = f.dataset.form, fd = new FormData(f);
-  if (kind === "settings"){
-    const s = {}; SETTINGS_FIELDS.forEach(x => s[x.k] = x.t === "chk" ? fd.has(x.k) : String(fd.get(x.k) ?? "").trim());
-    await saveSettings(s); setStatus("저장됨"); render(); return;
+  if (e.target.id === "todo-form"){
+    const inp = $("#todo-text"), text = inp.value.trim(); if (!text) return;
+    inp.value = ""; await saveDoc("todos", newId(), {text, done:false, order: state.todos.length + 1}); return;
   }
-  if (kind === "todo"){
-    const text = String(fd.get("text")||"").trim(); if (!text) return;
-    await saveDoc("todos", newId(), {text, done:false, order: state.todos.length + 1}); render(); return;
+  if (e.target.id !== "sheet-form" || !sheet) return;
+  const fd = new FormData(e.target);
+  if (sheet.kind === "settings"){
+    const s = {...state.settings}; SETTINGS_FIELDS.forEach(x => s[x.k] = x.t === "chk" ? fd.has(x.k) : String(fd.get(x.k) ?? "").trim());
+    closeSheet(); await saveSettings(s); return;
   }
-  const sch = SCHEMAS[kind], id = editing[kind] === "new" ? newId() : editing[kind];
-  const rec = {}; sch.fields.forEach(x => rec[x.k] = x.t === "chk" ? fd.has(x.k) : String(fd.get(x.k) ?? "").trim());
-  editing[kind] = null;
-  await saveDoc(kind, id, rec); render();
+  const {coll} = sheet, id = sheet.id || newId(), prev = sheet.id ? (state[coll].find(r => r.id === sheet.id) || {}) : {};
+  const rec = {}; Object.keys(prev).forEach(k => { if (k !== "id") rec[k] = prev[k]; });
+  SCHEMAS[coll].fields.forEach(x => rec[x.k] = x.t === "chk" ? fd.has(x.k) : String(fd.get(x.k) ?? "").trim());
+  closeSheet(); await saveDoc(coll, id, rec);
 });
 
-// ---------- boot ----------
+// ---------- 시작 ----------
 render();
 (async () => {
   try { db = await window.claude?.use?.("db"); } catch(e){ db = null; }
-  if (!db){
-    shared = false;
-    setStatus("이 화면에서만 계산 (공유 저장 꺼짐)");
-    return;
-  }
-  shared = true; setStatus("실시간 공유 중");
+  if (!db){ $("#dot").title = "이 화면에서만 계산 (공유 저장 꺼짐)"; return; }
+  shared = true; $("#dot").classList.add("on"); $("#dot").title = "실시간 공유 중";
   try {
     const u = await window.claude.use("user");
-    if (u && typeof u.can === "function"){ const w = await u.can("data.write"); if (w === false){ readOnly = true; banner("보기 전용으로 열렸어요. 수정하려면 편집 권한이 필요합니다."); } }
+    if (u && typeof u.can === "function" && (await u.can("data.write")) === false){ readOnly = true; banner("보기 전용으로 열렸어요. 수정하려면 '편집 가능' 권한이 필요해요."); }
   } catch(e){}
   ["sells","buys","loans","comps","todos"].forEach(coll => {
     db.collection(coll).onSnapshot(snap => {
       state[coll] = snap.docs.map(d => ({id:d.id, ...d.data()}));
-      if (!editing[coll] || tab !== coll) render();
-    }, err => { setStatus("연결이 끊겼어요. 새로고침해 주세요."); });
+      render();
+    }, () => { $("#dot").classList.remove("on"); banner("연결이 끊겼어요. 새로고침해 주세요."); });
   });
   db.doc("plan/settings").onSnapshot(snap => {
     state.settings = snap.exists ? {...DEFAULT_SETTINGS, ...snap.data()} : {...DEFAULT_SETTINGS};
-    if (tab !== "settings") render();
+    render();
   }, () => {});
 })();
 })();
