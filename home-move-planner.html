@@ -768,7 +768,7 @@ function renderAppliance(){
       <li><b>일괄 가격으로 제시:</b> 첫 제시가는 "일괄 ${man(n((a.steps||[])[0]))}". 품목별 표는 근거를 요청받을 때만 공개.</li>
       <li><b>TV 세트는 묶어서:</b> "9.1.4ch 돌비 애트모스 홈시어터 그대로 인수"로 설명. 사운드바를 따로 떼면 빼고 깎을 여지가 생김.</li>
       <li><b>네고 단계:</b> ${(a.steps||[]).map(v => man(n(v))).join(" → ")} (양보 폭을 점점 줄임).</li>
-      <li><b>양보 순서:</b> 책장·조명·실링팬(합계 약 ${man(t.rows.filter(r => ["fan","shelf","pendant"].includes(r.id)).reduce((x,r)=>x+r.used,0))})을 먼저 "서비스"로 얹고, 그다음 금액 조정.</li>
+      <li><b>양보 순서:</b> ${(() => { const sv = t.rows.filter(r => r.on && ["dining","fan","shelf","pendant"].includes(r.id)); return `${sv.map(r => r.name.replace(/\s*\(.*\)$/,"")).join("·")}(합계 약 ${man(sv.reduce((x,r)=>x+r.used,0))})`; })()}을 먼저 "서비스"로 얹고, 그다음 금액 조정. 식탁은 새 집에 자리가 없어 남기면 처분 비용이 드는 품목이에요.</li>
       <li><b>매매가 네고 방어용:</b> 매수인이 매매가 인하를 요구하면 현금 대신 "가전 무상 양도"로 대응. 매수인이 느끼는 가치는 ${man(t.used)}, 실제 비용은 약 ${man(t.floor)}.</li>
     </ol>
     <div class="label">계약서 특약 체크리스트</div>
