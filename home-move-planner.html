@@ -138,6 +138,40 @@ nav.tabbar button[aria-selected="true"]{color:var(--blue);background:var(--blue-
 .sheet{background:var(--card);width:100%;max-width:600px;max-height:88%;overflow-y:auto;border-radius:28px 28px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
 .sheet h3{margin:0;font-family:var(--cute);font-weight:400;font-size:22px}
 .sheet .grip{width:40px;height:4px;border-radius:9px;background:var(--line);align-self:center}
+.atable-wrap{overflow-x:auto;max-width:100%;margin-inline:-4px}
+.atable{border-collapse:collapse;width:100%;font-size:13px}
+.atable th{font-size:12px;color:var(--muted);font-weight:700;text-align:right;padding:6px 6px;white-space:nowrap;border-bottom:1px solid var(--line)}
+.atable th:nth-child(-n+3){text-align:left}
+.atable td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-weight:700}
+.atable td.nm{text-align:left;white-space:normal;min-width:130px}
+.atable td.nm .s{display:block;font-size:11px;color:var(--muted);font-weight:500}
+.atable td.nm .mdl{display:none}
+.atable td.md{text-align:left;white-space:normal;font-weight:500;color:var(--sub);font-size:12px;max-width:120px}
+.atable td.ck,.atable th.ck{text-align:center;width:36px}
+.atable td.ck input{width:20px;height:20px;accent-color:var(--blue)}
+.atable tr.off td{opacity:.4}
+.atable tr.off td.ck{opacity:1}
+.atable tfoot td{border-bottom:0;border-top:2px solid var(--line);font-weight:800}
+.atable .offer{color:var(--blue)} .atable .floor{color:var(--red)}
+@media (max-width:520px){
+  .atable{font-size:12px}
+  .atable td,.atable th{padding:8px 3px}
+  .atable td.nm{min-width:0;word-break:break-all}
+  .atable th{white-space:normal;font-size:11px;line-height:1.25}
+  .atable td.nm .s{display:none}
+  .atable td.md,.atable th.mdh{display:none}
+  .atable td.nm .mdl{display:block;font-size:10px;color:var(--muted);font-weight:500;word-break:break-all}
+  .atable td.ck,.atable th.ck{width:28px}
+}
+.steps{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.steps .arw{color:var(--muted);font-size:12px}
+details.memo{padding:0}
+details.memo>summary{list-style:none;cursor:pointer;padding:18px 20px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+details.memo>summary::-webkit-details-marker{display:none}
+details.memo>summary::after{content:"펼치기";font-size:12px;color:var(--muted);font-weight:700}
+details.memo[open]>summary::after{content:"접기"}
+details.memo .in{padding:0 20px 20px;display:flex;flex-direction:column;gap:10px}
+details.memo ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--sub)}
 .empty{color:var(--muted);font-size:14px;text-align:center;padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:6px}
 .empty::before{content:"";width:44px;height:44px;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M8 22 24 9l16 13v16a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3z' fill='%23B7A8FF'/%3E%3Cpath d='M24 34s-6-3.6-6-7.4a3.3 3.3 0 0 1 6-1.9 3.3 3.3 0 0 1 6 1.9C30 30.4 24 34 24 34z' fill='%23fff'/%3E%3C/svg%3E")}
 .gbar{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--field);gap:2px}
@@ -324,7 +358,7 @@ const SETTINGS_FIELDS = [
 const DEFAULT_SETTINGS = {cash:"", payoff:"", payoffFee:"", income:"", otherDebt:"", stress:"1.5", dsrLimit:"40", ltv:"40", cap:"60000", roomDeduct:"", horizon:"5", vat:true, qInterior:"3000", qMoving:"255", qLegal:"487", subA:"", subB:"", subRate:"", creditRate:"", moveDate:""};
 
 // ---------- 상태·저장 ----------
-const state = { sells:[], buys:[], loans:[], comps:[], todos:[], news:[], kbhist:[], settings:{...DEFAULT_SETTINGS} };
+const state = { sells:[], buys:[], loans:[], comps:[], todos:[], news:[], kbhist:[], appliance:null, settings:{...DEFAULT_SETTINGS} };
 let db = null, shared = false, readOnly = false;
 const local = { sells:{}, buys:{}, loans:{}, comps:{}, todos:{} };
 let tab = ls.get("tab2") || "home";
@@ -365,8 +399,22 @@ const S = () => state.settings;
 function sellCalc(s){
   const price = n(s.price), b = brokerFee(price, s.brokerRate, !!S().vat);
   const cgt = n(s.cgt), extra = n(s.extra), payoff = n(S().payoff) + n(S().payoffFee);
-  return {price, broker:b, cgt, extra, payoff, net: price - b.fee - cgt - extra - payoff};
+  const apIncome = applianceIncome();
+  return {price, broker:b, cgt, extra, payoff, apIncome, net: price - b.fee - cgt - extra - payoff + apIncome};
 }
+// ---------- 가전 양도 ----------
+// 품목 시세(used_price)는 원 단위(원본 JSON 그대로), 네고 단계·합의 금액은 페이지 공통 단위인 만원
+const applianceIncome = () => { const a = state.appliance; return a && has(a.agreed) ? n(a.agreed) : 0; };
+function applianceTotals(a){
+  const oR = n(a.offerRatio), fR = n(a.floorRatio);
+  const rows = (a.items || []).map(it => {
+    const used = n(it.used_price) / 10000; // → 만원
+    return {...it, used, offer: used * oR, floor: used * fR, on: it.included !== false};
+  });
+  const sum = k => rows.filter(r => r.on).reduce((t, r) => t + r[k], 0);
+  return {rows, used: sum("used"), offer: sum("offer"), floor: sum("floor"), count: rows.filter(r => r.on).length};
+}
+const man = v => { const r = Math.round(v*10)/10; return (Number.isInteger(r) ? r.toLocaleString() : r.toFixed(1)) + "만"; };
 function buyCalc(b){
   const price = n(b.price), tax = acqTax(price, !!b.over85), br = brokerFee(price, b.brokerRate, !!S().vat);
   const legal = has(b.legal) ? n(b.legal) : price*0.0015, interior = n(b.interior), moving = n(b.moving);
@@ -568,7 +616,7 @@ function renderHome(){
     <div class="chips">${state.sells.slice().sort((a,b)=>n(b.price)-n(a.price)).map(s => `<button class="chip" data-act="pickSell" data-id="${esc(s.id)}" aria-pressed="${sell && s.id===sell.id}">${eok(n(s.price))}</button>`).join("")}
       ${readOnly ? "" : `<button class="chip" data-act="new" data-coll="sells">+ 추가</button>`}</div>
     ${sc ? `<div class="rowkv" style="margin-top:4px"><span class="k">팔고 손에 남는 돈</span><span class="mid">${won(sc.net)}</span></div>
-    <div class="small">${esc(sell.label)} · 복비 ${won(sc.broker.fee,false)} · 대출 상환 ${won(sc.payoff,false)}${sc.cgt ? " · 양도세 "+won(sc.cgt,false) : ""}</div>` : `<div class="empty">팔 가격을 추가해 주세요</div>`}
+    <div class="small">${esc(sell.label)} · 복비 ${won(sc.broker.fee,false)} · 대출 상환 ${won(sc.payoff,false)}${sc.cgt ? " · 양도세 "+won(sc.cgt,false) : ""}${sc.apIncome ? " · 가전 양도 +"+won(sc.apIncome,false) : ""}</div>` : `<div class="empty">팔 가격을 추가해 주세요</div>`}
   </div>`;
   const pin = list.find(v => v.buy.top);
   if (pin){
@@ -667,12 +715,71 @@ function renderHomes(){
   } else {
     h += state.sells.slice().sort((a,b)=>n(b.price)-n(a.price)).map(s => { const c = sellCalc(s); return `<div class="card tight">
       <div class="cand-head"><div><div class="cand-name">${esc(s.label)}</div><div class="small">복비 ${won(c.broker.fee)} · 대출 상환 ${won(c.payoff)}</div></div><div class="mid">${eok(c.price)}</div></div>
+      ${c.apIncome ? `<div class="rowkv"><span class="k">가전 양도 수입 (매매가와 별도)</span><span class="v green">+${won(c.apIncome)}</span></div>` : ""}
       <div class="rowkv"><span class="k">손에 남는 돈</span><span class="v">${won(c.net)}</span></div>
       ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
       ${readOnly?"":`<div class="actions"><button class="btn sm" data-act="edit" data-coll="sells" data-id="${esc(s.id)}">수정</button></div>`}</div>`; }).join("");
     if (!readOnly) h += `<button class="add" data-act="new" data-coll="sells">+ 팔 가격 추가</button>`;
+    h += renderAppliance();
   }
   return h;
+}
+function renderAppliance(){
+  const a = state.appliance;
+  let h = `<div class="sec"><h2>가전 양도</h2><span class="small">매매가와 별도로 받는 돈</span></div>`;
+  if (!a) return h + `<div class="card"><div class="empty">가전 양도 데이터가 아직 없어요</div></div>`;
+  const t = applianceTotals(a), L = a.listing || {}, dis = readOnly ? "disabled" : "";
+  const agreed = has(a.agreed) ? n(a.agreed) : NaN;
+  h += `<div class="card tight">
+    ${L.interior_premium ? `<div class="small">풀인테리어 프리미엄 ${won(n(L.interior_premium)/10000)} · 비교 매물 ${eok(n(L.comparable_price)/10000)} → 우리 호가 ${eok(n(L.asking_price)/10000)}</div>` : ""}
+    <div class="quick-grid">
+      <label class="field" for="ap-offer"><span>제시가 비율 (× 중고 시세)</span><input id="ap-offer" type="number" inputmode="decimal" step="0.05" min="0" max="1.5" value="${esc(a.offerRatio)}" ${dis}></label>
+      <label class="field" for="ap-floor"><span>마지노선 비율</span><input id="ap-floor" type="number" inputmode="decimal" step="0.05" min="0" max="1.5" value="${esc(a.floorRatio)}" ${dis}></label>
+    </div>
+    <div class="atable-wrap"><table class="atable">
+      <thead><tr><th class="ck">양도</th><th>품목</th><th class="mdh">모델</th><th>중고 시세</th><th>제시가</th><th>마지노선</th></tr></thead>
+      <tbody>${t.rows.map((r,i) => `<tr class="${r.on?"":"off"}">
+        <td class="ck"><input type="checkbox" id="ap-inc-${i}" data-ap-inc="${i}" aria-label="${esc(r.name)} 양도 포함" ${r.on?"checked":""} ${dis}></td>
+        <td class="nm">${esc(r.name)}<span class="mdl">${esc(r.model)}</span>${r.note ? `<span class="s">${esc(r.note)}</span>` : ""}</td>
+        <td class="md">${esc(r.model)}</td>
+        <td>${man(r.used)}</td><td class="offer">${man(r.offer)}</td><td class="floor">${man(r.floor)}</td></tr>`).join("")}</tbody>
+      <tfoot><tr><td></td><td class="nm" id="ap-total-label">합계 (${t.count}/${t.rows.length}개 포함)</td><td class="md"></td>
+        <td id="ap-total-used">${man(t.used)}</td><td class="offer" id="ap-total-offer">${man(t.offer)}</td><td class="floor" id="ap-total-floor">${man(t.floor)}</td></tr></tfoot>
+    </table></div>
+    <div class="small">체크를 해제한 품목은 합계에서 빠져요. TV 세트는 사운드바·브라켓을 포함한 한 묶음이에요.</div>
+  </div>
+  <div class="card tight">
+    <div class="label">네고 단계</div>
+    <div class="steps">${(a.steps||[]).map((v,i) => `${i ? '<span class="arw">→</span>' : ""}<button class="chip" data-act="apStep" data-v="${esc(v)}" aria-pressed="${n(v) === agreed}" ${dis}>${man(n(v))}</button>`).join("")}</div>
+    <div class="small">양보 폭을 점점 줄여요. 단계를 누르면 합의 금액에 들어가요.</div>
+    <label class="field" for="ap-agreed"><span>현재 합의 금액 (만원)</span><input id="ap-agreed" inputmode="decimal" placeholder="예: 420" value="${esc(a.agreed)}" ${dis}><span class="conv">${isFinite(agreed) ? won(agreed) : ""}</span></label>
+    ${isFinite(agreed) ? `<div class="funding"><span class="label">${agreed < t.floor ? "마지노선보다 낮아요" : agreed >= t.offer ? "제시가 이상으로 합의" : "마지노선 이상이에요"}</span><span class="v ${agreed < t.floor ? "red" : "green"}">${agreed >= t.floor ? "+" : ""}${man(agreed - t.floor)}</span></div>
+    <div class="small">매도 순수입에 '가전 양도 수입 +${won(agreed)}'으로 따로 더해져요 (매매가·복비에는 영향 없음).</div>` : `<div class="small">합의 금액을 넣으면 매도 순수입에 별도 항목으로 더해져요.</div>`}
+  </div>
+  <details class="card memo"${ls.get("apMemo")==="1" ? " open" : ""} id="ap-memo"><summary>협상 전략 · 계약서 특약 메모</summary><div class="in">
+    <div class="label">협상 전략</div>
+    <ol>
+      <li><b>일괄 가격으로 제시:</b> 첫 제시가는 "일괄 ${man(n((a.steps||[])[0]))}". 품목별 표는 근거를 요청받을 때만 공개.</li>
+      <li><b>TV 세트는 묶어서:</b> "9.1.4ch 돌비 애트모스 홈시어터 그대로 인수"로 설명. 사운드바를 따로 떼면 빼고 깎을 여지가 생김.</li>
+      <li><b>네고 단계:</b> ${(a.steps||[]).map(v => man(n(v))).join(" → ")} (양보 폭을 점점 줄임).</li>
+      <li><b>양보 순서:</b> 책장·조명·실링팬(합계 약 ${man(t.rows.filter(r => ["fan","shelf","pendant"].includes(r.id)).reduce((x,r)=>x+r.used,0))})을 먼저 "서비스"로 얹고, 그다음 금액 조정.</li>
+      <li><b>매매가 네고 방어용:</b> 매수인이 매매가 인하를 요구하면 현금 대신 "가전 무상 양도"로 대응. 매수인이 느끼는 가치는 ${man(t.used)}, 실제 비용은 약 ${man(t.floor)}.</li>
+    </ol>
+    <div class="label">계약서 특약 체크리스트</div>
+    <div>${[["list","양도 품목 목록과 금액을 특약에 적기"],["asis","현 상태 그대로 인도"],["nowarranty","인도 후 하자 책임 없음"],["filter","정수기·식기세척기 필터 교체 이력과 보증 기간 정리해서 전달"]].map(([k,l]) => `<label class="todo ${a.checks && a.checks[k] ? "done" : ""}" for="ap-chk-${k}"><input type="checkbox" id="ap-chk-${k}" data-ap-chk="${k}" ${a.checks && a.checks[k] ? "checked" : ""} ${dis}><span class="tt">${l}</span></label>`).join("")}</div>
+    <div class="label">참고: 직접 떼어 갈 때 비용 (삼성 공식)</div>
+    <div class="note">에어컨 이전설치 9.6만~80.6만 · 철거만 4.3만~21.9만
+빌트인 식기세척기 이전 14.1만 · 철거 6.2만
+정수기 철거 4.8만~5.2만 · 전기레인지 철거 4.6만
+→ 떼면 철거비가 들고 주방에 빈자리가 생겨 인테리어 프리미엄이 약해져요. 마지노선에 넘겨도 손해가 아니에요.</div>
+  </div></details>`;
+  return h;
+}
+async function saveAppliance(patch){
+  state.appliance = {...state.appliance, ...patch};
+  render();
+  if (!shared) return;
+  try { await db.doc("appliance/plan").set({...state.appliance, by: whoSel.value, at: new Date().toISOString()}); } catch(e){ handleErr(e); }
 }
 let loanFor = ls.get("loanFor") || "";
 function loanOverview(list){
@@ -986,6 +1093,7 @@ document.addEventListener("click", async e => {
   else if (act === "toggle"){ if (e.target.closest("button")) return; open.has(id) ? open.delete(id) : open.add(id); render(); }
   else if (act === "new") openSheet({coll});
   else if (act === "edit"){ e.stopPropagation(); openSheet({coll, id}); }
+  else if (act === "apStep"){ await saveAppliance({agreed: String(t.dataset.v)}); }
   else if (act === "waitBuy"){ wait.buyId = id; wait.gBuy = null; ls.set("waitBuy", id); render(); }
   else if (act === "pt"){ chartSel.set(t.dataset.g, +t.dataset.i); render(); }
   else if (act === "toggleGroup"){ openGroups.has(id) ? openGroups.delete(id) : openGroups.add(id); render(); }
@@ -1003,6 +1111,7 @@ document.addEventListener("click", async e => {
   }
   else if (act === "delTodo"){ await delDoc("todos", id); }
 });
+document.addEventListener("toggle", e => { if (e.target.id === "ap-memo") ls.set("apMemo", e.target.open ? "1" : "0"); }, true);
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && sheet) closeSheet();
   if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".cand,.li.click")){ e.preventDefault(); e.target.click(); }
@@ -1013,6 +1122,13 @@ document.addEventListener("change", async e => {
     const rec = state.todos.find(x => x.id === t.dataset.id); if (!rec) return;
     const {id, ...rest} = rec; await saveDoc("todos", id, {...rest, done: t.checked});
   }
+  if (t.dataset && t.dataset.apInc !== undefined && state.appliance){
+    const items = state.appliance.items.map((it, i) => i === +t.dataset.apInc ? {...it, included: t.checked} : it);
+    await saveAppliance({items});
+  }
+  if (t.dataset && t.dataset.apChk && state.appliance){ await saveAppliance({checks: {...(state.appliance.checks||{}), [t.dataset.apChk]: t.checked}}); }
+  if ((t.id === "ap-offer" || t.id === "ap-floor") && state.appliance){ await saveAppliance({[t.id === "ap-offer" ? "offerRatio" : "floorRatio"]: n(t.value)}); }
+  if (t.id === "ap-agreed" && state.appliance){ await saveAppliance({agreed: t.value.trim()}); }
   if (/^w-(gb|gs|dr|m)$/.test(t.id)){ wait[{"w-gb":"gBuy","w-gs":"gSell","w-dr":"dRate","w-m":"months"}[t.id]] = +t.value; render(); }
   if (t.id === "q-kb"){ quick.kb = t.value; quick.price = ""; ls.set("quickKb", t.value); render(); }
 });
@@ -1070,6 +1186,7 @@ render();
       render();
     }, () => { $("#dot").classList.remove("on"); banner("연결이 끊겼어요. 새로고침해 주세요."); });
   });
+  db.doc("appliance/plan").onSnapshot(snap => { state.appliance = snap.exists ? snap.data() : null; render(); }, () => {});
   db.doc("plan/settings").onSnapshot(snap => {
     state.settings = snap.exists ? {...DEFAULT_SETTINGS, ...snap.data()} : {...DEFAULT_SETTINGS};
     render();

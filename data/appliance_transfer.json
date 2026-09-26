@@ -1,0 +1,83 @@
+{
+  "listing": {
+    "asking_price": 1060000000,
+    "comparable_price": 1030000000,
+    "interior_premium": 30000000
+  },
+  "offerRatio": 0.7,
+  "floorRatio": 0.5,
+  "steps": [
+    480,
+    420,
+    380,
+    340
+  ],
+  "agreed": "",
+  "items": [
+    {
+      "id": "tv",
+      "name": "TV 세트 (TV + 사운드바 + 벽걸이 브라켓)",
+      "model": "KQ75QND95AFXKR / HW-Q930D/KR / WMN-B1",
+      "used_price": 3400000,
+      "note": "TV 중고 370만, 사운드바 45만, TV 신품 최저 557만 · 사운드바는 사은품이라 세트로만 양도",
+      "included": true
+    },
+    {
+      "id": "ac",
+      "name": "에어컨 2in1 (스탠드+벽걸이)",
+      "model": "AF17DX738WSRS",
+      "used_price": 1000000,
+      "note": "2024~25년형 무풍 2in1 매물 100~110만",
+      "included": true
+    },
+    {
+      "id": "induction",
+      "name": "인덕션 (빌트인, 플렉스존)",
+      "model": "NZ63DB657CABS",
+      "used_price": 900000,
+      "note": "동일 모델 115만, 유사 모델 92~95만",
+      "included": true
+    },
+    {
+      "id": "purifier",
+      "name": "정수기 (냉온정, 싱크대 타공형)",
+      "model": "RWP54421BF8M",
+      "used_price": 700000,
+      "note": "동일 계열 75~80만",
+      "included": true
+    },
+    {
+      "id": "dishwasher",
+      "name": "식기세척기 (빌트인 14인용)",
+      "model": "DW60BB837USBT",
+      "used_price": 600000,
+      "note": "비스포크 14인용 60~63만",
+      "included": true
+    },
+    {
+      "id": "fan",
+      "name": "실링팬",
+      "model": "스피아노 SCF-SW52070L",
+      "used_price": 100000,
+      "note": "신품 26.9만",
+      "included": true
+    },
+    {
+      "id": "shelf",
+      "name": "책장 세트",
+      "model": "바스포르 뮤트 E0 1200set + 800",
+      "used_price": 80000,
+      "note": "신품 22.5만",
+      "included": true
+    },
+    {
+      "id": "pendant",
+      "name": "펜던트 조명",
+      "model": "히트조명 스티드 1등",
+      "used_price": 20000,
+      "note": "신품 4.6만",
+      "included": true
+    }
+  ],
+  "checks": {}
+}
