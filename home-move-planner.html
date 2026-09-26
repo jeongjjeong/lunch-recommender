@@ -72,7 +72,7 @@ header.top h1 .heart{color:var(--pink)}
 .stat .v{font-size:14px;font-weight:700;word-break:keep-all;line-height:1.35}
 .rowkv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px}
 .rowkv .k{color:var(--sub)}
-.rowkv .v{font-weight:700;text-align:right}
+.rowkv .v{font-weight:700;text-align:right;white-space:nowrap}
 .rowkv.total{border-top:1px dashed var(--line);padding-top:10px;font-size:15px}
 .rowkv.indent .k{padding-left:10px;color:var(--muted)}
 .badge{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
@@ -130,7 +130,7 @@ button:focus-visible,.cand:focus-visible,.li.click:focus-visible{outline:2px sol
 .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .banner{background:var(--orange-soft);color:var(--orange);border-radius:16px;padding:12px 16px;font-size:14px;font-weight:500}
 nav.tabbar{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:6}
-nav.tabbar .in{max-width:576px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr);background:var(--card);border-radius:24px;padding:6px;box-shadow:0 12px 32px rgba(60,40,160,.18)}
+nav.tabbar .in{max-width:576px;margin:0 auto;display:grid;grid-template-columns:repeat(7,1fr);background:var(--card);border-radius:24px;padding:6px;box-shadow:0 12px 32px rgba(60,40,160,.18)}
 nav.tabbar button{border:0;background:none;color:var(--muted);font:inherit;font-size:11px;font-weight:700;padding:7px 0 6px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;border-radius:18px}
 nav.tabbar button svg{width:22px;height:22px}
 nav.tabbar button[aria-selected="true"]{color:var(--blue);background:var(--blue-soft)}
@@ -226,6 +226,7 @@ details.memo ol{margin:0;padding-left:20px;display:flex;flex-direction:column;ga
   <button role="tab" data-tab="market"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>시세</button>
   <button role="tab" data-tab="todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>할 일</button>
   <button role="tab" data-tab="analysis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>분석</button>
+  <button role="tab" data-tab="living"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="11" height="18" rx="2"/><path d="M6 8h5M6 12h5"/><rect x="16" y="11" width="5" height="10" rx="1.5"/></svg>살림</button>
 </div></nav>
 <div id="sheet"></div>
 
@@ -362,7 +363,7 @@ const SETTINGS_FIELDS = [
 const DEFAULT_SETTINGS = {cash:"", payoff:"", payoffFee:"", income:"", otherDebt:"", stress:"1.5", dsrLimit:"40", ltv:"40", cap:"60000", roomDeduct:"", horizon:"5", vat:true, qInterior:"3000", qMoving:"255", qLegal:"487", subA:"", subB:"", subRate:"", creditRate:"", moveDate:""};
 
 // ---------- 상태·저장 ----------
-const state = { sells:[], buys:[], loans:[], comps:[], todos:[], news:[], kbhist:[], appliance:null, settings:{...DEFAULT_SETTINGS} };
+const state = { sells:[], buys:[], loans:[], comps:[], todos:[], news:[], kbhist:[], appliance:null, newhome:null, settings:{...DEFAULT_SETTINGS} };
 let db = null, shared = false, readOnly = false;
 const local = { sells:{}, buys:{}, loans:{}, comps:{}, todos:{} };
 let tab = ls.get("tab2") || "home";
@@ -1049,6 +1050,61 @@ function renderSellAnalysis(){
   </div>`;
 }
 
+// ---------- 살림 탭: 팔 때 가구·가전 돈 + 새 집 살림 구입 ----------
+// 양도를 안 하면 드는 철거비 (삼성 공식 기준 중간값, 만원)
+const REMOVAL = {ac: {v: 10, l: "4.3만~21.9만"}, dishwasher: {v: 6.2, l: "6.2만"}, purifier: {v: 5, l: "4.8만~5.2만"}, induction: {v: 4.6, l: "4.6만"}};
+function livingCalc(){
+  const a = state.appliance, nh = state.newhome;
+  const t = a ? applianceTotals(a) : null;
+  const agreed = applianceIncome();
+  const removal = t ? t.rows.filter(r => !r.on && REMOVAL[r.id]).map(r => ({name: r.name, v: REMOVAL[r.id].v, l: REMOVAL[r.id].l})) : [];
+  const etc = (nh && nh.sellCosts || []).map(c => ({name: c.name, v: n(c.price)/10000, note: c.note}));
+  const sellCost = removal.reduce((x,r) => x + r.v, 0) + etc.reduce((x,r) => x + r.v, 0);
+  const items = (nh && nh.items || []).map(it => ({...it, won: n(it.price)/10000 * (n(it.qty) || 1), on: it.buy !== false}));
+  const buyTotal = items.filter(i => i.on).reduce((x,i) => x + i.won, 0);
+  return {t, agreed, removal, etc, sellCost, items, buyTotal, net: buyTotal + sellCost - agreed};
+}
+function renderLiving(){
+  const nh = state.newhome;
+  if (!nh) return `<div class="card"><div class="empty">새 집 살림 계획 데이터가 아직 없어요</div></div>`;
+  const L = livingCalc(), dis = readOnly ? "disabled" : "";
+  let h = `<div class="card hero">
+    <div class="label">살림 옮기기 결산 (가전 양도 수입 − 새로 살 것 − 철거·폐기)</div>
+    <div class="big">${L.net <= 0 ? won(-L.net)+" 남아요" : won(L.net)+" 더 들어요"}</div>
+    <div class="small">새로 사는 데 ${won(L.buyTotal)} · 양도로 받는 돈 ${L.agreed ? won(L.agreed) : "합의 전"} · 팔 때 비용 ${won(L.sellCost)}</div>
+    <div class="small">이 금액은 아직 대출·추가 조달 계산에는 들어가 있지 않아요</div></div>`;
+  // 팔 때
+  h += `<div class="sec"><h2>팔 때 (지금 집)</h2><span class="small">가전 양도 표는 매물 탭 → 팔 집</span></div><div class="card tight">
+    <div class="rowkv"><span class="k">가전 양도 수입 (합의 금액)</span><span class="v green">${L.agreed ? "+"+won(L.agreed) : "합의 전"}</span></div>
+    ${!L.agreed && L.t ? `<div class="small">합의 전이면 마지노선 ${man(L.t.floor)} ~ 제시가 ${man(L.t.offer)} 사이에서 정해져요</div>` : ""}
+    ${L.removal.map(r => `<div class="rowkv indent"><span class="k">양도 안 하는 ${esc(r.name.replace(/\s*\(.*\)$/,""))} 철거비 (${esc(r.l)})</span><span class="v red">−${man(r.v)}</span></div>`).join("")}
+    ${L.etc.map(r => `<div class="rowkv indent"><span class="k">${esc(r.name)}${r.note ? ` <span class="small">${esc(r.note)}</span>` : ""}</span><span class="v red">−${man(r.v)}</span></div>`).join("")}
+    <div class="rowkv total"><span class="k">팔 때 가구·가전으로 남는 돈</span><span class="v">${won(L.agreed - L.sellCost)}</span></div>
+    <div class="small">소파는 가져가요. 이삿짐 비용은 매물 계산의 '이사·청소'에 이미 들어 있어요.</div></div>`;
+  // 새 집
+  h += `<div class="sec"><h2>새 집에 살 것</h2><span class="small">삼성 가성비 모델 · TV 제외</span></div><div class="card tight">
+    <div class="atable-wrap"><table class="atable">
+      <thead><tr><th class="ck">구입</th><th>품목</th><th class="mdh">모델</th><th>가격 (만원)</th></tr></thead><tbody>`;
+  let lastCat = "";
+  L.items.forEach((it, i) => {
+    if (it.cat !== lastCat){ lastCat = it.cat; h += `<tr><td colspan="4" class="nm" style="padding-top:14px;color:var(--blue)">${esc(it.cat)} <span class="small">${man(L.items.filter(x => x.cat === it.cat && x.on).reduce((x,y) => x + y.won, 0))}</span></td></tr>`; }
+    h += `<tr class="${it.on ? "" : "off"}">
+      <td class="ck"><input type="checkbox" id="nh-buy-${i}" data-nh-buy="${i}" aria-label="${esc(it.name)} 구입" ${it.on ? "checked" : ""} ${dis}></td>
+      <td class="nm">${esc(it.name)}${it.model && it.model !== "-" ? `<span class="mdl">${esc(it.model)}</span>` : ""}${it.note ? `<span class="s">${esc(it.note)}</span>` : ""}</td>
+      <td class="md">${it.model && it.model !== "-" ? esc(it.model) : ""}</td>
+      <td><input id="nh-price-${i}" data-nh-price="${i}" inputmode="decimal" value="${esc(Math.round(n(it.price)/1000)/10)}" style="width:72px;padding:6px 8px;font-size:14px;text-align:right" aria-label="${esc(it.name)} 가격" ${dis}></td></tr>`;
+  });
+  h += `</tbody><tfoot><tr><td></td><td class="nm">합계 (${L.items.filter(i => i.on).length}/${L.items.length}개)</td><td class="md"></td><td id="nh-total">${man(L.buyTotal)}</td></tr></tfoot></table></div>
+    <div class="small">${esc(nh.note || "")}</div></div>`;
+  return h;
+}
+async function saveNewhome(patch){
+  state.newhome = {...state.newhome, ...patch};
+  render();
+  if (!shared) return;
+  try { await db.doc("newhome/plan").set({...state.newhome, by: whoSel.value, at: new Date().toISOString()}); } catch(e){ handleErr(e); }
+}
+
 // ---------- 시트(입력 폼) ----------
 function fieldHtml(f, v){
   const id = "f-"+f.k, hint = f.hint ? `<span class="hint">${esc(f.hint)}</span>` : "";
@@ -1082,7 +1138,7 @@ function closeSheet(){ sheet = null; renderSheet(); }
 function render(){
   document.querySelectorAll("nav.tabbar button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
   const a = document.activeElement, keep = a && a.id && $("#main").contains(a) ? {id:a.id, s:a.selectionStart, e:a.selectionEnd} : null;
-  const R = {home:renderHome, homes:renderHomes, loans:renderLoans, market:renderMarket, todo:renderTodo, analysis:renderAnalysis};
+  const R = {home:renderHome, homes:renderHomes, loans:renderLoans, market:renderMarket, todo:renderTodo, analysis:renderAnalysis, living:renderLiving};
   $("#main").innerHTML = R[tab]();
   if (keep){ const el = document.getElementById(keep.id); if (el){ el.focus(); try{ el.setSelectionRange(keep.s, keep.e); }catch(e){} } }
 }
@@ -1127,6 +1183,12 @@ document.addEventListener("change", async e => {
   if (t.dataset && t.dataset.act === "check"){
     const rec = state.todos.find(x => x.id === t.dataset.id); if (!rec) return;
     const {id, ...rest} = rec; await saveDoc("todos", id, {...rest, done: t.checked});
+  }
+  if (t.dataset && t.dataset.nhBuy !== undefined && state.newhome){
+    await saveNewhome({items: state.newhome.items.map((it, i) => i === +t.dataset.nhBuy ? {...it, buy: t.checked} : it)});
+  }
+  if (t.dataset && t.dataset.nhPrice !== undefined && state.newhome){
+    await saveNewhome({items: state.newhome.items.map((it, i) => i === +t.dataset.nhPrice ? {...it, price: Math.round(n(t.value) * 10000)} : it)});
   }
   if (t.dataset && t.dataset.apInc !== undefined && state.appliance){
     const items = state.appliance.items.map((it, i) => i === +t.dataset.apInc ? {...it, included: t.checked} : it);
@@ -1192,6 +1254,7 @@ render();
       render();
     }, () => { $("#dot").classList.remove("on"); banner("연결이 끊겼어요. 새로고침해 주세요."); });
   });
+  db.doc("newhome/plan").onSnapshot(snap => { state.newhome = snap.exists ? snap.data() : null; render(); }, () => {});
   db.doc("appliance/plan").onSnapshot(snap => { state.appliance = snap.exists ? snap.data() : null; render(); }, () => {});
   db.doc("plan/settings").onSnapshot(snap => {
     state.settings = snap.exists ? {...DEFAULT_SETTINGS, ...snap.data()} : {...DEFAULT_SETTINGS};
