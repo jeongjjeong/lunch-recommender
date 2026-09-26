@@ -244,6 +244,10 @@ function won(m, unit=true){ // 만원 → "12억 4,000만원"
   if (m === 0) s = "0";
   return (neg ? "−" : "") + s + (unit ? "원" : "");
 }
+function wonFull(m){
+  const w = Math.round(m * 10000), e = Math.floor(w / 1e8), mn = Math.floor((w % 1e8) / 1e4), r = w % 1e4;
+  return [e ? e.toLocaleString()+"억" : "", mn ? mn.toLocaleString()+"만" : "", r ? r.toLocaleString() : ""].filter(Boolean).join(" ") + "원";
+}
 const eok = m => (Math.round(m/100)/100).toLocaleString(undefined,{maximumFractionDigits:2}) + "억";
 const pct = (x,d=1) => (isFinite(x) ? x.toFixed(d) : "-") + "%";
 const ls = { get(k){ try{return localStorage.getItem(k);}catch(e){return null;} }, set(k,v){ try{localStorage.setItem(k,v);}catch(e){} } };
@@ -398,9 +402,9 @@ const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2
 const S = () => state.settings;
 function sellCalc(s){
   const price = n(s.price), b = brokerFee(price, s.brokerRate, !!S().vat);
-  const cgt = n(s.cgt), extra = n(s.extra), payoff = n(S().payoff) + n(S().payoffFee);
+  const cgt = n(s.cgt), extra = n(s.extra), loanBal = n(S().payoff), loanFee = n(S().payoffFee), payoff = loanBal + loanFee;
   const apIncome = applianceIncome();
-  return {price, broker:b, cgt, extra, payoff, apIncome, net: price - b.fee - cgt - extra - payoff + apIncome};
+  return {price, broker:b, cgt, extra, payoff, loanBal, loanFee, apIncome, net: price - b.fee - cgt - extra - payoff + apIncome};
 }
 // ---------- 가전 양도 ----------
 // 품목 시세(used_price)는 원 단위(원본 JSON 그대로), 네고 단계·합의 금액은 페이지 공통 단위인 만원
@@ -616,7 +620,7 @@ function renderHome(){
     <div class="chips">${state.sells.slice().sort((a,b)=>n(b.price)-n(a.price)).map(s => `<button class="chip" data-act="pickSell" data-id="${esc(s.id)}" aria-pressed="${sell && s.id===sell.id}">${eok(n(s.price))}</button>`).join("")}
       ${readOnly ? "" : `<button class="chip" data-act="new" data-coll="sells">+ 추가</button>`}</div>
     ${sc ? `<div class="rowkv" style="margin-top:4px"><span class="k">팔고 손에 남는 돈</span><span class="mid">${won(sc.net)}</span></div>
-    <div class="small">${esc(sell.label)} · 복비 ${won(sc.broker.fee,false)} · 대출 상환 ${won(sc.payoff,false)}${sc.cgt ? " · 양도세 "+won(sc.cgt,false) : ""}${sc.apIncome ? " · 가전 양도 +"+won(sc.apIncome,false) : ""}</div>` : `<div class="empty">팔 가격을 추가해 주세요</div>`}
+    <div class="small">${esc(sell.label)} · 복비 ${won(sc.broker.fee,false)} · 대출 잔금 ${won(sc.loanBal,false)}${sc.loanFee ? " + 중도상환수수료 "+won(sc.loanFee,false) : ""}${sc.cgt ? " · 양도세 "+won(sc.cgt,false) : ""}${sc.apIncome ? " · 가전 양도 +"+won(sc.apIncome,false) : ""}</div>` : `<div class="empty">팔 가격을 추가해 주세요</div>`}
   </div>`;
   const pin = list.find(v => v.buy.top);
   if (pin){
@@ -714,7 +718,9 @@ function renderHomes(){
     if (off.length) h += `<button class="btn" data-act="toggleDropped">${showDropped ? "탈락한 매물 접기" : `탈락한 매물 ${off.length}건 보기`}</button>` + (showDropped ? off.map(buyCard).join("") : "");
   } else {
     h += state.sells.slice().sort((a,b)=>n(b.price)-n(a.price)).map(s => { const c = sellCalc(s); return `<div class="card tight">
-      <div class="cand-head"><div><div class="cand-name">${esc(s.label)}</div><div class="small">복비 ${won(c.broker.fee)} · 대출 상환 ${won(c.payoff)}</div></div><div class="mid">${eok(c.price)}</div></div>
+      <div class="cand-head"><div><div class="cand-name">${esc(s.label)}</div><div class="small">복비 ${won(c.broker.fee)}</div></div><div class="mid">${eok(c.price)}</div></div>
+      <div class="rowkv"><span class="k">대출 잔금 상환</span><span class="v">${wonFull(c.loanBal)}</span></div>
+      ${c.loanFee ? `<div class="rowkv"><span class="k">중도상환수수료</span><span class="v">${won(c.loanFee)}</span></div>` : ""}
       ${c.apIncome ? `<div class="rowkv"><span class="k">가전 양도 수입 (매매가와 별도)</span><span class="v green">+${won(c.apIncome)}</span></div>` : ""}
       <div class="rowkv"><span class="k">손에 남는 돈</span><span class="v">${won(c.net)}</span></div>
       ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
