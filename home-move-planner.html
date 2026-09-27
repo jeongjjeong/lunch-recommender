@@ -423,8 +423,9 @@ const man = v => { const r = Math.round(v*10)/10; return (Number.isInteger(r) ? 
 function buyCalc(b){
   const price = n(b.price), tax = acqTax(price, !!b.over85), br = brokerFee(price, b.brokerRate, !!S().vat);
   const legal = has(b.legal) ? n(b.legal) : price*0.0015, interior = n(b.interior), moving = n(b.moving);
-  const extras = tax.amount + br.fee + legal + interior + moving;
-  return {price, tax, broker:br, legal, interior, moving, extras, total: price + extras};
+  const living = livingCost(); // 살림 탭: 새로 살 가전·가구 + 양도 안 한 품목 철거·폐기 (양도 수입은 매도 순수입에 따로 들어감)
+  const extras = tax.amount + br.fee + legal + interior + moving + living;
+  return {price, tax, broker:br, legal, interior, moving, living, extras, total: price + extras};
 }
 const isSub = l => l.kind === "신용·기타";
 function mainLimit(loan, kb){
@@ -588,6 +589,7 @@ function candCard(x, i){
       <div class="rowkv"><span class="k">− 등기·채권 등</span><span class="v">${won(x.bc.legal)}</span></div>
       <div class="rowkv"><span class="k">− 인테리어</span><span class="v">${won(x.bc.interior)}</span></div>
       <div class="rowkv"><span class="k">− 이사·청소</span><span class="v">${won(x.bc.moving)}</span></div>
+      ${x.bc.living ? `<div class="rowkv"><span class="k">− 새 살림 (살림 탭)</span><span class="v">${won(x.bc.living)}</span></div>` : ""}
       <div class="rowkv total"><span class="k">빌려야 하는 돈</span><span class="v">${won(Math.max(0,x.need))}</span></div>
       <div class="rowkv indent"><span class="k">주담대 한도 (KB ${eok(x.kb)} × ${esc(S().ltv)}% − ${won(n(S().roomDeduct),false)})</span><span class="v">${won(p.limit)}</span></div>
       ${p.parts.map(q => `<div class="rowkv indent"><span class="k">${esc(q.loan.bank)} ${pct(q.c.rate,2)} · ${q.c.years}년</span><span class="v">${won(q.c.amt)}</span></div>`).join("")}
@@ -677,7 +679,7 @@ function quickOut(){
   const x = quickEval(price, kb, sale), maxP = maxPriceNoExtra(kb, sale);
   return `<div style="display:flex;flex-direction:column;gap:10px">${fundingBlock(x.plan)}${statsBlock(x)}${dsrBlock(x.plan)}
     <div class="rowkv"><span class="k">이 팔 가격이면 추가 조달 0원 최대가</span><span class="v blue">${won(maxP)}</span></div>
-    <div class="small">인테리어 ${won(n(S().qInterior),false)} · 이사 ${won(n(S().qMoving),false)} · 등기 등 ${won(n(S().qLegal),false)} 포함</div></div>`;
+    <div class="small">인테리어 ${won(n(S().qInterior),false)} · 이사 ${won(n(S().qMoving),false)} · 등기 등 ${won(n(S().qLegal),false)}${livingCost() ? " · 새 살림 "+won(livingCost(),false) : ""} 포함</div></div>`;
 }
 function priceTrail(b){
   const h = Array.isArray(b.priceHistory) ? b.priceHistory.filter(x => has(x.price)) : [];
@@ -1051,6 +1053,7 @@ function renderSellAnalysis(){
 }
 
 // ---------- 살림 탭: 팔 때 가구·가전 돈 + 새 집 살림 구입 ----------
+function livingCost(){ const L = livingCalc(); return L.buyTotal + L.sellCost; }
 // 양도를 안 하면 드는 철거비 (삼성 공식 기준 중간값, 만원)
 const REMOVAL = {ac: {v: 10, l: "4.3만~21.9만"}, dishwasher: {v: 6.2, l: "6.2만"}, purifier: {v: 5, l: "4.8만~5.2만"}, induction: {v: 4.6, l: "4.6만"}};
 function livingCalc(){
@@ -1072,7 +1075,7 @@ function renderLiving(){
     <div class="label">살림 옮기기 결산 (가전 양도 수입 − 새로 살 것 − 철거·폐기)</div>
     <div class="big">${L.net <= 0 ? won(-L.net)+" 남아요" : won(L.net)+" 더 들어요"}</div>
     <div class="small">새로 사는 데 ${won(L.buyTotal)} · 양도로 받는 돈 ${L.agreed ? won(L.agreed) : "합의 전"} · 팔 때 비용 ${won(L.sellCost)}</div>
-    <div class="small">이 금액은 아직 대출·추가 조달 계산에는 들어가 있지 않아요</div></div>`;
+    <div class="small">새로 살 것과 철거·폐기비(${won(L.buyTotal + L.sellCost)})는 모든 매물의 부대비용에, 양도 수입은 매도 순수입에 자동으로 들어가요</div></div>`;
   // 팔 때
   h += `<div class="sec"><h2>팔 때 (지금 집)</h2><span class="small">가전 양도 표는 매물 탭 → 팔 집</span></div><div class="card tight">
     ${L.t ? `<div class="label">넘기는 가전·가구 (${L.t.count}/${L.t.rows.length}개)</div>
