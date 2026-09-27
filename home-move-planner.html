@@ -1075,7 +1075,11 @@ function renderLiving(){
     <div class="small">이 금액은 아직 대출·추가 조달 계산에는 들어가 있지 않아요</div></div>`;
   // 팔 때
   h += `<div class="sec"><h2>팔 때 (지금 집)</h2><span class="small">가전 양도 표는 매물 탭 → 팔 집</span></div><div class="card tight">
-    <div class="rowkv"><span class="k">가전 양도 수입 (합의 금액)</span><span class="v green">${L.agreed ? "+"+won(L.agreed) : "합의 전"}</span></div>
+    ${L.t ? `<div class="label">넘기는 가전·가구 (${L.t.count}/${L.t.rows.length}개)</div>
+    <div class="list">${L.t.rows.map(r => `<div class="li" style="padding:8px 0;${r.on ? "" : "opacity:.45"}"><div><div class="t" style="font-size:14px">${esc(r.name)}</div><div class="s">${esc(r.model)}${r.on ? "" : " · 양도 안 함"}</div></div>
+      <div class="r"><div class="t" style="font-size:14px">${man(r.used)}</div><div class="s">중고 시세</div></div></div>`).join("")}</div>
+    <div class="rowkv"><span class="k">중고 시세 합계 · 제시가 · 마지노선</span><span class="v">${man(L.t.used)} · ${man(L.t.offer)} · ${man(L.t.floor)}</span></div>` : ""}
+    <div class="rowkv total"><span class="k">가전 양도 수입 (일괄 합의 금액)</span><span class="v green">${L.agreed ? "+"+won(L.agreed) : "합의 전"}</span></div>
     ${!L.agreed && L.t ? `<div class="small">합의 전이면 마지노선 ${man(L.t.floor)} ~ 제시가 ${man(L.t.offer)} 사이에서 정해져요</div>` : ""}
     ${L.removal.map(r => `<div class="rowkv indent"><span class="k">양도 안 하는 ${esc(r.name.replace(/\s*\(.*\)$/,""))} 철거비 (${esc(r.l)})</span><span class="v red">−${man(r.v)}</span></div>`).join("")}
     ${L.etc.map(r => `<div class="rowkv indent"><span class="k">${esc(r.name)}${r.note ? ` <span class="small">${esc(r.note)}</span>` : ""}</span><span class="v red">−${man(r.v)}</span></div>`).join("")}
