@@ -409,7 +409,12 @@ function sellCalc(s){
 }
 // ---------- 가전 양도 ----------
 // 품목 시세(used_price)는 원 단위(원본 JSON 그대로), 네고 단계·합의 금액은 페이지 공통 단위인 만원
-const applianceIncome = () => { const a = state.appliance; return a && has(a.agreed) ? n(a.agreed) : 0; };
+function applianceShare(a){ // 합의 당시 품목 대비 지금 포함된 품목 비율 (중고 시세 기준)
+  const t = applianceTotals(a);
+  const base = n(a.agreedBase) || (a.items || []).reduce((x, it) => x + n(it.used_price)/10000, 0);
+  return {t, base, ratio: base ? t.used / base : 0};
+}
+const applianceIncome = () => { const a = state.appliance; if (!a || !has(a.agreed)) return 0; return n(a.agreed) * applianceShare(a).ratio; };
 function applianceTotals(a){
   const oR = n(a.offerRatio), fR = n(a.floorRatio);
   const rows = (a.items || []).map(it => {
@@ -763,7 +768,7 @@ function renderAppliance(){
     <div class="small">양보 폭을 점점 줄여요. 단계를 누르면 합의 금액에 들어가요.</div>
     <label class="field" for="ap-agreed"><span>현재 합의 금액 (만원)</span><input id="ap-agreed" inputmode="decimal" placeholder="예: 420" value="${esc(a.agreed)}" ${dis}><span class="conv">${isFinite(agreed) ? won(agreed) : ""}</span></label>
     ${isFinite(agreed) ? `<div class="funding"><span class="label">${agreed < t.floor ? "마지노선보다 낮아요" : agreed >= t.offer ? "제시가 이상으로 합의" : "마지노선 이상이에요"}</span><span class="v ${agreed < t.floor ? "red" : "green"}">${agreed >= t.floor ? "+" : ""}${man(agreed - t.floor)}</span></div>
-    <div class="small">매도 순수입에 '가전 양도 수입 +${won(agreed)}'으로 따로 더해져요 (매매가·복비에는 영향 없음).</div>` : `<div class="small">합의 금액을 넣으면 매도 순수입에 별도 항목으로 더해져요.</div>`}
+    <div class="small">매도 순수입에 '가전 양도 수입 +${won(applianceIncome())}'으로 따로 더해져요${Math.abs(applianceIncome() - agreed) > 0.05 ? ` (합의 ${won(agreed)} 중 지금 체크된 품목 몫)` : ""} · 매매가·복비에는 영향 없음</div>` : `<div class="small">합의 금액을 넣으면 매도 순수입에 별도 항목으로 더해져요.</div>`}
   </div>
   <details class="card memo"${ls.get("apMemo")==="1" ? " open" : ""} id="ap-memo"><summary>협상 전략 · 계약서 특약 메모</summary><div class="in">
     <div class="label">협상 전략</div>
@@ -1079,10 +1084,13 @@ function renderLiving(){
   // 팔 때
   h += `<div class="sec"><h2>팔 때 (지금 집)</h2><span class="small">가전 양도 표는 매물 탭 → 팔 집</span></div><div class="card tight">
     ${L.t ? `<div class="label">넘기는 가전·가구 (${L.t.count}/${L.t.rows.length}개)</div>
-    <div class="list">${L.t.rows.map(r => `<div class="li" style="padding:8px 0;${r.on ? "" : "opacity:.45"}"><div><div class="t" style="font-size:14px">${esc(r.name)}</div><div class="s">${esc(r.model)}${r.on ? "" : " · 양도 안 함"}</div></div>
-      <div class="r"><div class="t" style="font-size:14px">${man(r.used)}</div><div class="s">중고 시세</div></div></div>`).join("")}</div>
+    <div class="list">${L.t.rows.map((r,i) => `<label class="li" for="lv-inc-${i}" style="padding:8px 0;cursor:pointer;justify-content:flex-start"><input type="checkbox" id="lv-inc-${i}" data-ap-inc="${i}" ${r.on ? "checked" : ""} ${readOnly ? "disabled" : ""} style="width:22px;height:22px;accent-color:var(--blue);flex:none" aria-label="${esc(r.name)} 양도"><div style="flex:1;min-width:0;${r.on ? "" : "opacity:.45"}"><div class="t" style="font-size:14px">${esc(r.name)}</div><div class="s">${esc(r.model)}${r.on ? "" : " · 우리가 가져가거나 처분"}</div></div>
+      <div class="r" style="${r.on ? "" : "opacity:.45"}"><div class="t" style="font-size:14px">${man(r.used)}</div><div class="s">중고 시세</div></div></label>`).join("")}</div>
     <div class="rowkv"><span class="k">중고 시세 합계 · 제시가 · 마지노선</span><span class="v">${man(L.t.used)} · ${man(L.t.offer)} · ${man(L.t.floor)}</span></div>` : ""}
-    <div class="rowkv total"><span class="k">가전 양도 수입 (일괄 합의 금액)</span><span class="v green">${L.agreed ? "+"+won(L.agreed) : "합의 전"}</span></div>
+    ${(() => { const a = state.appliance; if (!a || !has(a.agreed)) return `<div class="rowkv total"><span class="k">가전 양도 수입</span><span class="v green">합의 전</span></div>`;
+      const sh = applianceShare(a), full = Math.abs(sh.ratio - 1) < 0.0005;
+      return `<div class="rowkv total"><span class="k">가전 양도 수입${full ? " (일괄 합의 금액)" : ""}</span><span class="v green">+${won(L.agreed)}</span></div>
+      ${full ? "" : `<div class="small">합의 ${won(n(a.agreed))} × 체크된 품목 비율 ${(sh.ratio*100).toFixed(1)}% (중고 시세 ${man(sh.t.used)} / ${man(sh.base)})</div>`}`; })()}
     ${!L.agreed && L.t ? `<div class="small">합의 전이면 마지노선 ${man(L.t.floor)} ~ 제시가 ${man(L.t.offer)} 사이에서 정해져요</div>` : ""}
     ${L.removal.map(r => `<div class="rowkv indent"><span class="k">양도 안 하는 ${esc(r.name.replace(/\s*\(.*\)$/,""))} 철거비 (${esc(r.l)})</span><span class="v red">−${man(r.v)}</span></div>`).join("")}
     ${L.etc.map(r => `<div class="rowkv indent"><span class="k">${esc(r.name)}${r.note ? ` <span class="small">${esc(r.note)}</span>` : ""}</span><span class="v red">−${man(r.v)}</span></div>`).join("")}
@@ -1162,7 +1170,7 @@ document.addEventListener("click", async e => {
   else if (act === "toggle"){ if (e.target.closest("button")) return; open.has(id) ? open.delete(id) : open.add(id); render(); }
   else if (act === "new") openSheet({coll});
   else if (act === "edit"){ e.stopPropagation(); openSheet({coll, id}); }
-  else if (act === "apStep"){ await saveAppliance({agreed: String(t.dataset.v)}); }
+  else if (act === "apStep"){ await saveAppliance({agreed: String(t.dataset.v), agreedBase: applianceTotals(state.appliance).used}); }
   else if (act === "waitBuy"){ wait.buyId = id; wait.gBuy = null; ls.set("waitBuy", id); render(); }
   else if (act === "pt"){ chartSel.set(t.dataset.g, +t.dataset.i); render(); }
   else if (act === "toggleGroup"){ openGroups.has(id) ? openGroups.delete(id) : openGroups.add(id); render(); }
@@ -1203,7 +1211,7 @@ document.addEventListener("change", async e => {
   }
   if (t.dataset && t.dataset.apChk && state.appliance){ await saveAppliance({checks: {...(state.appliance.checks||{}), [t.dataset.apChk]: t.checked}}); }
   if ((t.id === "ap-offer" || t.id === "ap-floor") && state.appliance){ await saveAppliance({[t.id === "ap-offer" ? "offerRatio" : "floorRatio"]: n(t.value)}); }
-  if (t.id === "ap-agreed" && state.appliance){ await saveAppliance({agreed: t.value.trim()}); }
+  if (t.id === "ap-agreed" && state.appliance){ await saveAppliance({agreed: t.value.trim(), agreedBase: applianceTotals(state.appliance).used}); }
   if (/^w-(gb|gs|dr|m)$/.test(t.id)){ wait[{"w-gb":"gBuy","w-gs":"gSell","w-dr":"dRate","w-m":"months"}[t.id]] = +t.value; render(); }
   if (t.id === "q-kb"){ quick.kb = t.value; quick.price = ""; ls.set("quickKb", t.value); render(); }
 });
