@@ -337,11 +337,16 @@ const SCHEMAS = {
     {k:"note", l:"메모", t:"text"} ]},
 };
 const SETTINGS_FIELDS = [
-  {k:"cash", l:"보유 자산 (현금·주식 등)", t:"won"},
+  {k:"stocks", l:"보유 자산 · 주식", t:"won"},
+  {k:"savings", l:"보유 자산 · ISA·코인·청약·예금", t:"won", hint:"청약을 해지해 현금으로 쓰면 청약담보대출은 못 받아요"},
+  {k:"cash", l:"보유 자산 · 기타 현금", t:"won"},
   {k:"ownBuyPrice", l:"지금 집 산 가격", t:"won"},
   {k:"ownBuyDate", l:"지금 집 산 날 (YYYY-MM-DD)", t:"text"},
   {k:"payoff", l:"지금 집 대출 잔액", t:"won"},
   {k:"payoffFee", l:"지금 대출 중도상환수수료", t:"won"},
+  {k:"sellBrokerFee", l:"매도 복비 (중개사 합의 금액)", t:"won", hint:"비우면 법정 상한으로 계산"},
+  {k:"buyBrokerFee", l:"매수 복비 (중개사 합의 금액)", t:"won", hint:"모든 매수 후보에 적용 · 매물에 요율을 넣으면 그게 우선"},
+  {k:"oneBroker", l:"한 중개사에서 매도·매수 같이 (매도 복비 0원, 매수 복비만)", t:"chk"},
   {k:"income", l:"부부 합산 연소득", t:"won", hint:"DSR 계산용"},
   {k:"otherDebt", l:"다른 대출 연 원리금", t:"won"},
   {k:"ltv", l:"LTV %", t:"num"},
@@ -401,8 +406,13 @@ const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2
 
 // ---------- 계산 ----------
 const S = () => state.settings;
+const sellBrokerTxt = b => b.one ? "0원 (매수 중개사에 합산)" : won(b.fee, false) + (b.fixed ? " (합의)" : "");
+const assets = () => n(S().stocks) + n(S().savings) + n(S().cash); // 보유 자산 합계 (만원)
 function sellCalc(s){
-  const price = n(s.price), b = brokerFee(price, s.brokerRate, !!S().vat);
+  const price = n(s.price), b = has(s.brokerRate) ? brokerFee(price, s.brokerRate, !!S().vat)
+    : S().oneBroker ? {fee:0, rate:0, fixed:true, one:true}
+    : has(S().sellBrokerFee) ? {fee:n(S().sellBrokerFee), rate: price ? n(S().sellBrokerFee)/price*100 : 0, fixed:true}
+    : brokerFee(price, "", !!S().vat);
   const cgt = n(s.cgt), extra = n(s.extra), loanBal = n(S().payoff), loanFee = n(S().payoffFee), payoff = loanBal + loanFee;
   const apIncome = applianceIncome();
   return {price, broker:b, cgt, extra, payoff, loanBal, loanFee, apIncome, net: price - b.fee - cgt - extra - payoff + apIncome};
@@ -426,7 +436,8 @@ function applianceTotals(a){
 }
 const man = v => { const r = Math.round(v*10)/10; return (Number.isInteger(r) ? r.toLocaleString() : r.toFixed(1)) + "만"; };
 function buyCalc(b){
-  const price = n(b.price), tax = acqTax(price, !!b.over85), br = brokerFee(price, b.brokerRate, !!S().vat);
+  const price = n(b.price), tax = acqTax(price, !!b.over85);
+  const br = !has(b.brokerRate) && has(S().buyBrokerFee) ? {fee:n(S().buyBrokerFee), rate: price ? n(S().buyBrokerFee)/price*100 : 0, fixed:true} : brokerFee(price, b.brokerRate, !!S().vat);
   const legal = has(b.legal) ? n(b.legal) : price*0.0015, interior = n(b.interior), moving = n(b.moving);
   const living = livingCost(); // 살림 탭: 새로 살 가전·가구 + 양도 안 한 품목 철거·폐기 (양도 수입은 매도 순수입에 따로 들어감)
   const extras = tax.amount + br.fee + legal + interior + moving + living;
@@ -493,7 +504,7 @@ function currentSell(){
 function evalBuy(b, salePrice){
   const sell = currentSell();
   const sellNet = salePrice ? sellCalc({price: salePrice, extra: sell ? sell.extra : ""}).net : sell ? sellCalc(sell).net : 0;
-  const bc = buyCalc(b), need = bc.total - sellNet - n(S().cash);
+  const bc = buyCalc(b), need = bc.total - sellNet - assets();
   const kb = has(b.kb) ? n(b.kb) : bc.price;
   return {buy:b, bc, need, kb, plan: financing(need, kb)};
 }
@@ -554,8 +565,10 @@ function extraLines(short){
 }
 function fundingBlock(plan){
   if (plan.need <= 0) return `<div class="funding"><span class="label">대출 없이 가능</span><span class="v green">${won(-plan.need)} 남음</span></div>`;
+  const spare = plan.limit - plan.need; // 주담대를 한도까지 받으면 손에 남는 현금
+  const spareLine = spare > 0.5 ? `<div class="rowkv" style="padding:0 4px"><span class="k">주담대 한도까지 받으면 남는 현금</span><span class="v green">${won(spare)}</span></div>` : "";
   if (plan.short > 0) return `<div class="funding"><span class="label">주담대 후 더 필요한 돈</span><span class="v red">${won(plan.short)}</span></div>${extraLines(plan.short)}`;
-  return `<div class="funding"><span class="label">주담대만으로 가능</span><span class="v green">추가 0원</span></div>`;
+  return `<div class="funding"><span class="label">주담대만으로 가능</span><span class="v green">추가 0원</span></div>${spareLine}`;
 }
 function dsrBlock(plan){
   if (plan.need <= 0 || !isFinite(plan.dsr)) return "";
@@ -587,10 +600,10 @@ function candCard(x, i){
     const sell = currentSell(), sc = sell ? sellCalc(sell) : null;
     h += `<div class="details">
       <div class="rowkv"><span class="k">팔고 남는 돈</span><span class="v">${sc ? won(sc.net) : "-"}</span></div>
-      <div class="rowkv"><span class="k">+ 보유 자산</span><span class="v">${won(n(S().cash))}</span></div>
+      <div class="rowkv"><span class="k">+ 보유 자산 (주식·예금 등)</span><span class="v">${won(assets())}</span></div>
       <div class="rowkv"><span class="k">− 매수가</span><span class="v">${won(x.bc.price)}</span></div>
       <div class="rowkv"><span class="k">− 취득세 ${pct(x.bc.tax.total,2)}</span><span class="v">${won(x.bc.tax.amount)}</span></div>
-      <div class="rowkv"><span class="k">− 복비 ${pct(x.bc.broker.rate,1)}${S().vat?"+VAT":""}</span><span class="v">${won(x.bc.broker.fee)}</span></div>
+      <div class="rowkv"><span class="k">− 복비 ${x.bc.broker.fixed ? (S().oneBroker ? "(매도·매수 한 곳 합의)" : "(합의)") : pct(x.bc.broker.rate,1)+(S().vat?"+VAT":"")}</span><span class="v">${won(x.bc.broker.fee)}</span></div>
       <div class="rowkv"><span class="k">− 등기·채권 등</span><span class="v">${won(x.bc.legal)}</span></div>
       <div class="rowkv"><span class="k">− 인테리어</span><span class="v">${won(x.bc.interior)}</span></div>
       <div class="rowkv"><span class="k">− 이사·청소</span><span class="v">${won(x.bc.moving)}</span></div>
@@ -610,6 +623,36 @@ function candCard(x, i){
   return h + `</div>`;
 }
 
+// 우리 돈 흐름: 경한이 직접 계산한 순서 그대로 (집 팔고 대출 갚음 + 새 대출 → 매수가 → 부대비용 → 보유 자산과 비교)
+function flowCard(x){
+  const sell = currentSell(); if (!sell) return "";
+  const sc = sellCalc(sell), bc = x.bc, lim = x.plan.limit;
+  const saleCash = sc.price - sc.loanBal;            // 집 팔고 대출 뺀 돈
+  const gap = bc.price - saleCash - lim;              // 대출 외에 매수가에 더 필요한 돈
+  const taxes = bc.tax.amount + bc.legal + sc.loanFee + sc.extra + sc.cgt; // 세금·채권·등기·중도상환수수료 등
+  const brokers = sc.broker.fee + bc.broker.fee;
+  const costs = taxes + brokers + bc.moving;          // 인테리어·살림 빼고 필요한 부대비용
+  const needCash = gap + costs, have = assets() + sc.apIncome;
+  const afterBase = have - needCash, afterInt = afterBase - bc.interior, afterAll = afterInt - bc.living;
+  const row = (k, v, cls) => `<div class="rowkv"><span class="k">${k}</span><span class="v ${cls||""}">${v}</span></div>`;
+  const sign = v => (v >= 0 ? "" : "−") + won(Math.abs(v));
+  return `<div class="card tight">
+    <div class="cand-head"><div><div class="label">우리 돈 흐름</div><div class="cand-name">${esc(x.buy.label)}</div></div><span class="badge">팔 가격 ${eok(sc.price)}</span></div>
+    ${row("집 팔고 대출 갚은 돈", won(saleCash))}
+    ${row("+ 새 주담대 (한도)", won(lim))}
+    ${row("대출 외에 필요한 돈", won(gap), "blue")}
+    <div class="label" style="margin-top:4px">인테리어 빼고 필요한 부대비용</div>
+    ${row("1. 세금·채권·등기 등", won(taxes))}
+    ${row(`2. 중개비 <span class="small">${S().oneBroker ? "한 곳" : "매도 "+won(sc.broker.fee,false)+"+매수 "+won(bc.broker.fee,false)}</span>`, won(brokers))}
+    ${row("3. 이사·청소", won(bc.moving))}
+    ${row("현금으로 필요한 돈", won(needCash), "blue")}
+    ${row(`보유 자산${sc.apIncome ? " + 가전 양도" : ""}`, won(have))}
+    <div class="funding"><span class="label">부대비용까지 내고 남는 돈</span><span class="v ${afterBase>=0?"green":"red"}">${sign(afterBase)}</span></div>
+    ${row(`− 인테리어 ${won(bc.interior,false)} 하면`, sign(afterInt), afterInt >= 0 ? "green" : "red")}
+    ${bc.living ? row(`− 새 살림 ${won(bc.living,false)}까지 하면`, sign(afterAll), afterAll >= 0 ? "green" : "red") : ""}
+    <div class="small">${afterAll >= 0 ? "신용대출·청약담보대출 없이 가능해요" : `모자란 ${won(-afterAll,false)}은 청약담보 → 신용대출 순으로 채워요`} · 인테리어는 매물 수정에서 바꿀 수 있어요</div>
+  </div>`;
+}
 // ---------- 탭 ----------
 function moveCard(){
   const m = /^(\d{4})-(\d{1,2})/.exec(S().moveDate || ""); if (!m) return "";
@@ -628,7 +671,7 @@ function renderHome(){
     <div class="chips">${state.sells.slice().sort((a,b)=>n(b.price)-n(a.price)).map(s => `<button class="chip" data-act="pickSell" data-id="${esc(s.id)}" aria-pressed="${sell && s.id===sell.id}">${eok(n(s.price))}</button>`).join("")}
       ${readOnly ? "" : `<button class="chip" data-act="new" data-coll="sells">+ 추가</button>`}</div>
     ${sc ? `<div class="rowkv" style="margin-top:4px"><span class="k">팔고 손에 남는 돈</span><span class="mid">${won(sc.net)}</span></div>
-    <div class="small">${esc(sell.label)} · 복비 ${won(sc.broker.fee,false)} · 대출 잔금 ${won(sc.loanBal,false)}${sc.loanFee ? " + 중도상환수수료 "+won(sc.loanFee,false) : ""}${sc.cgt ? " · 양도세 "+won(sc.cgt,false) : ""}${sc.apIncome ? " · 가전 양도 +"+won(sc.apIncome,false) : ""}</div>` : `<div class="empty">팔 가격을 추가해 주세요</div>`}
+    <div class="small">${esc(sell.label)} · 복비 ${sellBrokerTxt(sc.broker)} · 대출 잔금 ${won(sc.loanBal,false)}${sc.loanFee ? " + 중도상환수수료 "+won(sc.loanFee,false) : ""}${sc.cgt ? " · 양도세 "+won(sc.cgt,false) : ""}${sc.apIncome ? " · 가전 양도 +"+won(sc.apIncome,false) : ""}</div>` : `<div class="empty">팔 가격을 추가해 주세요</div>`}
   </div>`;
   const pin = list.find(v => v.buy.top);
   if (pin){
@@ -639,6 +682,7 @@ function renderHome(){
       <div class="stats"><div class="stat"><div class="k">월 상환 (전체)</div><div class="v">${pin.plan.monthly ? won(totalMonthly(pin.plan),false) : "-"}</div></div><div class="stat"><div class="k">주담대 DSR</div><div class="v">${pct(pin.plan.dsr)}</div></div><div class="stat"><div class="k">0원 조달 가격</div><div class="v">${won(zeroPrice(pin.buy),false)}</div></div></div>
     </div>`;
   }
+  if (pin) h += flowCard(pin);
   if (top && top !== pin){
     h += `<div class="card hero"><svg class="deco" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 88S12 64 12 38a19 19 0 0 1 38-8 19 19 0 0 1 38 8c0 26-38 50-38 50z" fill="#fff"/></svg>
       <div class="label">지금 기준 가장 부담 적은 집</div>
@@ -726,7 +770,7 @@ function renderHomes(){
     if (off.length) h += `<button class="btn" data-act="toggleDropped">${showDropped ? "탈락한 매물 접기" : `탈락한 매물 ${off.length}건 보기`}</button>` + (showDropped ? off.map(buyCard).join("") : "");
   } else {
     h += state.sells.slice().sort((a,b)=>n(b.price)-n(a.price)).map(s => { const c = sellCalc(s); return `<div class="card tight">
-      <div class="cand-head"><div><div class="cand-name">${esc(s.label)}</div><div class="small">복비 ${won(c.broker.fee)}</div></div><div class="mid">${eok(c.price)}</div></div>
+      <div class="cand-head"><div><div class="cand-name">${esc(s.label)}</div><div class="small">복비 ${sellBrokerTxt(c.broker)}</div></div><div class="mid">${eok(c.price)}</div></div>
       <div class="rowkv"><span class="k">대출 잔금 상환</span><span class="v">${wonFull(c.loanBal)}</span></div>
       ${c.loanFee ? `<div class="rowkv"><span class="k">중도상환수수료</span><span class="v">${won(c.loanFee)}</span></div>` : ""}
       ${c.apIncome ? `<div class="rowkv"><span class="k">가전 양도 수입 (매매가와 별도)</span><span class="v green">+${won(c.apIncome)}</span></div>` : ""}
