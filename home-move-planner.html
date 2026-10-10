@@ -297,11 +297,12 @@ const SCHEMAS = {
     {k:"brokerRate", l:"복비 요율 %", t:"num", hint:"비우면 법정 상한으로 계산"},
     {k:"cgt", l:"양도세", t:"won", hint:"1세대1주택 비과세면 0"},
     {k:"extra", l:"기타 비용", t:"won", hint:"근저당 말소 등"},
+    {k:"done", l:"실제 거래 확정", t:"chk", hint:"체크하면 계산 기본값이 이 가격이 돼요"},
     {k:"note", l:"메모", t:"area"} ]},
   buys: { title:"살 집", fields:[
     {k:"label", l:"이름", t:"text", req:true, ph:"예: 한솔4단지 409동 17평 9층"},
     {k:"top", l:"우리 1순위 매물", t:"chk"},
-    {k:"status", l:"진행 상태", t:"sel", opts:["관심","협상 중","보류","탈락"]},
+    {k:"status", l:"진행 상태", t:"sel", opts:["관심","협상 중","보류","탈락","계약"]},
     {k:"complex", l:"단지 (시세 탭과 같은 이름)", t:"text", ph:"한솔4단지주공"},
     {k:"area", l:"평형 (시세 탭과 같은 표기)", t:"text", ph:"17평(전용12)"},
     {k:"price", l:"매수가", t:"won", req:true},
@@ -372,7 +373,7 @@ const state = { sells:[], buys:[], loans:[], comps:[], todos:[], news:[], kbhist
 let db = null, shared = false, readOnly = false;
 const local = { sells:{}, buys:{}, loans:{}, comps:{}, todos:{} };
 let tab = ls.get("tab2") || "home";
-let pickedSell = ls.get("pickedSell");
+let pickedSell = ls.get("pickedSell2");
 let homesSeg = "buy", marketSeg = "매수 후보";
 const open = new Set();
 let sheet = null; // {kind, coll, id}
@@ -499,7 +500,7 @@ function bankRows(x, limit){
 }
 function currentSell(){
   if (!state.sells.length) return null;
-  return state.sells.find(s => s.id === pickedSell) || [...state.sells].sort((a,b) => n(b.price) - n(a.price))[0];
+  return state.sells.find(s => s.id === pickedSell) || state.sells.find(s => s.done) || [...state.sells].sort((a,b) => n(b.price) - n(a.price))[0];
 }
 function evalBuy(b, salePrice){
   const sell = currentSell();
@@ -655,18 +656,32 @@ function flowCard(x){
 }
 // ---------- 탭 ----------
 function moveCard(){
-  const m = /^(\d{4})-(\d{1,2})/.exec(S().moveDate || ""); if (!m) return "";
-  const target = new Date(+m[1], +m[2]-1, 1), now = new Date(); now.setHours(0,0,0,0);
+  const m = /^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/.exec(S().moveDate || ""); if (!m) return "";
+  const target = new Date(+m[1], +m[2]-1, +(m[3]||1)), now = new Date(); now.setHours(0,0,0,0);
   const days = Math.round((target - now)/864e5);
   const apply = new Date(target); apply.setDate(apply.getDate() - 56);
   return `<div class="card hero pink tight"><svg class="deco" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 88S12 64 12 38a19 19 0 0 1 38-8 19 19 0 0 1 38 8c0 26-38 50-38 50z" fill="#fff"/></svg>
-    <div class="cand-head"><div><div class="label">우리 새 보금자리까지</div><div class="big">${days > 0 ? "D-"+days : "D-day"}</div></div><span class="badge">${m[1]}년 ${+m[2]}월 이사</span></div>
-    <div class="small">대출 신청은 늦어도 ${apply.getFullYear()}년 ${apply.getMonth()+1}월 초까지 · 매도 잔금은 매수 잔금보다 먼저</div></div>`;
+    <div class="cand-head"><div><div class="label">우리 새 보금자리까지</div><div class="big">${days > 0 ? "D-"+days : "D-day"}</div></div><span class="badge">${m[1]}년 ${+m[2]}월${m[3] ? " "+(+m[3])+"일 잔금·" : " "}이사</span></div>
+    <div class="small">대출 신청은 늦어도 ${apply.getFullYear()}년 ${apply.getMonth()+1}월 ${apply.getDate()}일까지 (잔금 8주 전) · 매도 잔금은 매수 잔금보다 먼저</div></div>`;
+}
+// 거래 일정: 할 일 중 날짜(date)가 있는 것. inM/outM = 그날 받는 돈/주는 돈 (만원)
+function scheduleCard(){
+  const items = state.todos.filter(t => /^\d{4}-\d{2}-\d{2}/.test(t.date || "")).sort((a,b) => String(a.date).localeCompare(String(b.date)));
+  if (!items.length) return "";
+  const today = new Date(); today.setHours(0,0,0,0);
+  const next = items.find(t => !t.done && new Date(t.date) >= today);
+  const W = ["일","월","화","수","목","금","토"];
+  return `<div class="card tight"><div class="cand-head"><div class="mid">거래 일정</div>${next ? `<span class="badge blue">다음: ${esc(String(next.date).slice(5).replace("-","/"))}</span>` : ""}</div>
+    ${items.map(t => { const d = new Date(t.date), days = Math.round((d - today)/864e5);
+      const money = [has(t.inM) ? `<span class="green">+${won(n(t.inM),false)} 받음</span>` : "", has(t.outM) ? `<span class="red">−${won(n(t.outM),false)} 보냄</span>` : ""].filter(Boolean).join(" · ");
+      return `<div class="todo ${t.done?"done":""}" style="${t===next?"background:var(--field);border-radius:12px;padding:12px 10px":""}"><input type="checkbox" aria-label="완료" data-act="check" data-id="${esc(t.id)}" ${t.done?"checked":""} ${readOnly?"disabled":""}>
+        <div class="tt"><div class="small">${d.getMonth()+1}/${d.getDate()} (${W[d.getDay()]})${t.time ? " "+esc(t.time) : ""} · ${t.done ? "완료" : days > 0 ? "D-"+days : days === 0 ? "오늘" : "지남"}</div>${esc(t.text)}${money ? `<div class="small">${money}</div>` : ""}</div></div>`; }).join("")}
+  </div>`;
 }
 function renderHome(){
   const sell = currentSell(), sc = sell ? sellCalc(sell) : null;
   const list = ranked(), top = list[0];
-  let h = moveCard() + `<div class="card tight">
+  let h = moveCard() + scheduleCard() + `<div class="card tight">
     <div class="label">팔 가격을 골라 보세요</div>
     <div class="chips">${state.sells.slice().sort((a,b)=>n(b.price)-n(a.price)).map(s => `<button class="chip" data-act="pickSell" data-id="${esc(s.id)}" aria-pressed="${sell && s.id===sell.id}">${eok(n(s.price))}</button>`).join("")}
       ${readOnly ? "" : `<button class="chip" data-act="new" data-coll="sells">+ 추가</button>`}</div>
@@ -742,7 +757,7 @@ function trailLine(b){
 }
 const topBadge = b => b.top ? `<span class="badge top"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 .8l1.6 3.3 3.6.5-2.6 2.5.6 3.6L6 9l-3.2 1.7.6-3.6L.8 4.6l3.6-.5z" fill="currentColor"/></svg> 우리 1순위</span>` : "";
 let showDropped = false;
-const STATUS = ["관심","협상 중","보류","탈락"];
+const STATUS = ["관심","협상 중","보류","탈락","계약"];
 function buyCard(b){
   const x = evalBuy(b), p = x.plan, st = b.status || "관심";
   return `<div class="card tight" style="${dropped(b)?"opacity:.6":""}${b.top?";box-shadow:0 0 0 2px #FFC7DC, var(--shadow)":""}">
@@ -974,9 +989,9 @@ function renderMarket(){
   return h;
 }
 function renderTodo(){
-  const todos = state.todos.slice().sort((a,b) => (n(a.order)-n(b.order)) || String(a.at).localeCompare(String(b.at)));
+  const todos = state.todos.filter(t => !has(t.date)).sort((a,b) => (n(a.order)-n(b.order)) || String(a.at).localeCompare(String(b.at)));
   const done = todos.filter(t => t.done).length;
-  return `<div class="card tight"><div class="cand-head"><div class="mid">같이 챙길 일</div><span class="badge blue">${done}/${todos.length}</span></div>
+  return scheduleCard() + `<div class="card tight"><div class="cand-head"><div class="mid">같이 챙길 일</div><span class="badge blue">${done}/${todos.length}</span></div>
     <div>${todos.map(t => `<div class="todo ${t.done?"done":""}"><input type="checkbox" aria-label="완료" data-act="check" data-id="${esc(t.id)}" ${t.done?"checked":""} ${readOnly?"disabled":""}><div class="tt">${esc(t.text)}${t.by && t.by!=="Claude" ? `<div class="by">${esc(t.by)}</div>` : ""}</div>${readOnly?"":`<button class="btn sm danger" data-act="delTodo" data-id="${esc(t.id)}" aria-label="삭제">삭제</button>`}</div>`).join("")}</div>
     ${readOnly?"":`<form id="todo-form" style="display:flex;gap:8px;margin-top:4px"><input id="todo-text" placeholder="할 일 추가" required><button class="btn primary" style="flex:none" type="submit">추가</button></form>`}
   </div>`;
@@ -1210,7 +1225,7 @@ document.addEventListener("click", async e => {
   const {act, coll, id} = t.dataset;
   if (act === "closeBg" && e.target === t) closeSheet();
   else if (act === "close") closeSheet();
-  else if (act === "pickSell"){ pickedSell = id; ls.set("pickedSell", id); quick.saleTouched = false; render(); }
+  else if (act === "pickSell"){ pickedSell = id; ls.set("pickedSell2", id); quick.saleTouched = false; render(); }
   else if (act === "toggle"){ if (e.target.closest("button")) return; open.has(id) ? open.delete(id) : open.add(id); render(); }
   else if (act === "new") openSheet({coll});
   else if (act === "edit"){ e.stopPropagation(); openSheet({coll, id}); }
