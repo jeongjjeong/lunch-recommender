@@ -373,7 +373,7 @@ const SETTINGS_FIELDS = [
 const DEFAULT_SETTINGS = {cash:"", payoff:"", payoffFee:"", income:"", otherDebt:"", stress:"1.5", dsrLimit:"40", ltv:"40", cap:"60000", roomDeduct:"", horizon:"5", vat:true, qInterior:"3000", qMoving:"255", qLegal:"487", subA:"", subB:"", subRate:"", creditRate:"", moveDate:""};
 
 // ---------- 상태·저장 ----------
-const state = { sells:[], buys:[], loans:[], comps:[], todos:[], news:[], kbhist:[], rebuild:[], appliance:null, newhome:null, settings:{...DEFAULT_SETTINGS} };
+const state = { sells:[], buys:[], loans:[], comps:[], todos:[], news:[], kbhist:[], rebuild:[], appliance:null, newhome:null, contrib:null, settings:{...DEFAULT_SETTINGS} };
 let db = null, shared = false, readOnly = false;
 const local = { sells:{}, buys:{}, loans:{}, comps:{}, todos:{} };
 let tab = ls.get("tab2") || "home";
@@ -774,7 +774,7 @@ function buyCard(b){
       <div class="stat"><div class="k">월 상환 (전체)</div><div class="v">${p.monthly ? won(totalMonthly(p), false) : "-"}</div></div>
       <div class="stat"><div class="k">주담대 DSR</div><div class="v">${pct(p.dsr)}</div></div></div>
     ${negoBlock(b)}
-    ${/한솔/.test(b.complex||"") && !dropped(b) ? rebuildBlock(3) : ""}
+    ${/한솔/.test(b.complex||"") && !dropped(b) ? contribTable(b, false) + rebuildBlock(3) : ""}
     ${b.note ? `<div class="note">${esc(b.note)}</div>` : ""}
     ${readOnly?"":`<div class="actions"><button class="btn sm" data-act="edit" data-coll="buys" data-id="${esc(b.id)}">수정</button></div>`}</div>`;
 }
@@ -1054,6 +1054,22 @@ function dealCheck(key, price, date){
   const kbAt = h ? ((h.filter(x => x.ym <= ym).pop() || {}).mid || 0) : 0;
   return {r, before, after, b3, avgB3, maxBefore, est, kbAt, kbNow: r.kb, price};
 }
+// 조합 분담금 추정표 (plan/contrib): cols = 종전 평형별 권리가액, rows = 신축 평형별 조합원 분양가·분담금(음수 = 환급), 금액 만원
+function contribTable(buy, full){
+  const c = state.contrib; if (!c || !Array.isArray(c.rows)) return "";
+  const k = n(c.ourCol), price = n(buy.price);
+  const right = n((c.cols[k] || {}).right);
+  const sign = v => v < 0 ? `<span class="red">${eok(-v)} 환급</span>` : `${eok(v)}`;
+  if (!full){
+    const pick = c.rows.filter(r => /\((2[4-9]|3[0-5])\)/.test(r.area)).slice(0,2);
+    return `<div class="small">조합 추정 (${esc(c.title)}): ${pick.map(r => `${esc(r.area.replace(/^.*\((\d+)\)$/,"$1평"))} 분담금 ${r.contrib[k] < 0 ? eok(-r.contrib[k])+" 환급" : eok(r.contrib[k])}`).join(" · ")} · 자세한 표는 분석 탭</div>`;
+  }
+  return `<div class="label" style="margin-top:6px">조합 분담금 추정 <span class="small">${esc(c.title)} · 비례율 ${esc(c.ratio)}% · ${esc(c.source||"")}</span></div>
+    <div class="small">우리 집 ${esc((c.cols[k]||{}).area||"")} 권리가액 <b>${eok(right)}</b> (산 값 ${eok(price)}보다 ${eok(right - price)} 높음) · 분담금 = 조합원 분양가 − 권리가액</div>
+    <div class="list">${c.rows.map(r => { const v = n(r.contrib[k]), total = price + v;
+      return `<div class="li"><div><div class="t">신축 ${esc(r.area)}</div><div class="s">조합원 분양가 ${eok(n(r.price))} · 우리 총 투입 ${eok(total)} (산 값 + 분담금)</div></div><div class="r"><div class="t">${sign(v)}</div><div class="s">분담금</div></div></div>`; }).join("")}</div>
+    <div class="small">${esc(c.note||"")}</div>`;
+}
 // 재건축 소식 (rebuild 컬렉션, 매주 Claude가 추가), 최신순. next 필드가 있는 최신 문서 = 다음 일정
 function rebuildBlock(limit){
   const list = state.rebuild.slice().sort((a,b) => String(b.date).localeCompare(String(a.date)));
@@ -1104,6 +1120,7 @@ function renderAnalysis(){
       <div class="rowkv"><span class="k">단순 계산 (시세 − 산 값 − 분담금)</span><span class="v">${eok(margin)}</span></div>
       ${has(buy.marginPV) ? `<div class="rowkv total"><span class="k">안전마진 (현재가치)</span><span class="v green">${eok(n(buy.marginPV))}</span></div>` : `<div class="rowkv total"><span class="k">안전마진</span><span class="v green">${eok(margin)}</span></div>`}
       <div class="small">분담금은 최대치 기준 · 취득세 ${won(tax,false)}까지 빼면 ${eok((has(buy.marginPV) ? n(buy.marginPV) : margin) - tax)}${has(buy.landShare) ? ` · 대지지분 ${esc(buy.landShare)}평 → 평당 ${won(B.price/n(buy.landShare),false)}` : ""}</div>`; })()}
+    ${contribTable(buy, true)}
     ${rebuildBlock(6)}
   </div>`;
   // 잘 팔았나
@@ -1340,6 +1357,7 @@ render();
     }, () => { $("#dot").classList.remove("on"); banner("연결이 끊겼어요. 새로고침해 주세요."); });
   });
   db.doc("newhome/plan").onSnapshot(snap => { state.newhome = snap.exists ? snap.data() : null; render(); }, () => {});
+  db.doc("plan/contrib").onSnapshot(snap => { state.contrib = snap.exists ? snap.data() : null; render(); }, () => {});
   db.doc("appliance/plan").onSnapshot(snap => { state.appliance = snap.exists ? snap.data() : null; render(); }, () => {});
   db.doc("plan/settings").onSnapshot(snap => {
     state.settings = snap.exists ? {...DEFAULT_SETTINGS, ...snap.data()} : {...DEFAULT_SETTINGS};
